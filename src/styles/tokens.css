@@ -1,0 +1,74 @@
+/**
+ * Design token baseline for the Pomodoro theme system.
+ * Source of truth: 08_UI_Theme_Colors_and_Responsive_Rules.pdf
+ * - Section 2: Core Color System
+ * - Section 5: Spacing, Radius & Elevation
+ *
+ * These are plain CSS custom properties (not Tailwind `@theme` variables) so
+ * they can be scoped per color-scheme via the `.dark` class. `src/app/globals.css`
+ * bridges the semantic names below into Tailwind's `--color-*` namespace with
+ * `@theme inline`, so every hex value is written exactly once, here.
+ */
+
+:root {
+  /* Surfaces & text -- doc section 2, light column */
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --surface-soft: #f1f2f4;
+  --text-primary: #17191d;
+  --text-secondary: #666b74;
+  --border: #e2e4e8;
+
+  /* Mode accents -- doc section 2, light column */
+  --focus: #e85d3f;
+  --short-break: #2e9b74;
+  --long-break: #4c78d0;
+
+  /* Status colors -- doc section 2, light column */
+  --warning: #b7791f;
+  --danger: #c94343;
+  --success: #27835f;
+
+  /* Background readability layer -- doc section 2, light column */
+  --overlay: rgba(0, 0, 0, 0.35);
+
+  /*
+   * Spacing scale -- doc section 5 (4, 8, 12, 16, 20, 24, 32, 40, 48, 64px).
+   * Tailwind's default `--spacing: 0.25rem` multiplier already produces this
+   * exact scale (p-1 = 4px ... p-16 = 64px), so Tailwind spacing utilities
+   * need no override. These raw tokens exist for non-Tailwind consumers
+   * (inline styles, raw CSS, calc()) that need the same scale by name.
+   */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+}
+
+/* Dark mode overrides -- doc section 2, dark/overlay column. Applied via
+   next-themes' class strategy (`.dark` on <html>); see `@custom-variant dark`
+   in globals.css. */
+.dark {
+  --bg: #0f1115;
+  --surface: #181b21;
+  --surface-soft: #20242b;
+  --text-primary: #f7f7f5;
+  --text-secondary: #b6bbc4;
+  --border: #343942;
+
+  --focus: #ff765a;
+  --short-break: #4ec99b;
+  --long-break: #75a2f4;
+
+  --warning: #f2b84b;
+  --danger: #f26b6b;
+  --success: #49be8d;
+
+  --overlay: rgba(0, 0, 0, 0.5);
+}

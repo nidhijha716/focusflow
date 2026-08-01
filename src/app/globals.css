@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+/*
+ * Class-based dark mode (doc 08 "Dark mode: class-based" requirement).
+ * Tailwind v4 defaults `dark:` to `prefers-color-scheme`; this line switches
+ * it to track the `.dark` class that next-themes toggles on <html>.
+ * https://tailwindcss.com/docs/dark-mode
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Semantic color + spacing tokens (light values in :root, dark in .dark). */
+@import "../styles/tokens.css";
+
+@theme {
+  /*
+   * Extra responsive breakpoints -- doc 08 section 6.
+   * Tailwind's defaults already match the doc exactly: sm=640px, md=768px,
+   * lg=1024px, xl=1280px, 2xl=1536px -- left untouched. Only the two smaller
+   * tiers (360px "mobile", 480px "large mobile") are missing and added here.
+   * Everything below 2xs (0-359px, "very small mobile") is the unprefixed,
+   * mobile-first base style.
+   */
+  --breakpoint-2xs: 22.5rem; /* 360px */
+  --breakpoint-xs: 30rem; /* 480px */
+
+  /*
+   * Radius scale -- doc 08 section 3/5. Overrides Tailwind's default
+   * --radius-sm/md/lg (which are much smaller, e.g. default sm = 0.25rem)
+   * with the design system's values, and adds a new `pill` step.
+   */
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+}
+
+/*
+ * Bridge semantic tokens (tokens.css) into Tailwind's `--color-*` namespace.
+ * `inline` is required because these values reference other CSS variables
+ * that are re-scoped under `.dark` -- see "Referencing other variables" in
+ * https://tailwindcss.com/docs/theme. This is what makes classes like
+ * `bg-bg`, `text-text-primary`, and `bg-focus` exist and stay reactive to
+ * the current color scheme.
+ */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-soft: var(--surface-soft);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-border: var(--border);
+
+  --color-focus: var(--focus);
+  --color-short-break: var(--short-break);
+  --color-long-break: var(--long-break);
+
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+
+  --color-overlay: var(--overlay);
+
+  --font-sans: var(--font-dm-sans);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+}
+
+/* Starter responsive utilities -- doc 08 section 21 "Implementation CSS Rules",
+   ported verbatim so component authors have the fluid shell/timer/touch/sheet
+   primitives available from day one. */
+@layer components {
+  /* Fluid application shell */
+  .app-shell {
+    width: min(100% - 32px, 1440px);
+    margin-inline: auto;
+  }
+
+  /* Timer */
+  .timer-value {
+    font-size: clamp(4.5rem, 14vw, 11rem);
+    line-height: 0.9;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* Touch controls */
+  .control {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Safe mobile sheet */
+  .mobile-sheet {
+    max-height: 100dvh;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+
+  @media (min-width: 768px) {
+    .app-shell {
+      width: min(100% - 48px, 1440px);
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .app-shell {
+      width: min(100% - 80px, 1440px);
+    }
+  }
+}
+
+/* Respect prefers-reduced-motion -- doc 08 section 20/21. Left unlayered
+   (with !important, as specified) so it reliably wins over both Tailwind
+   utilities and the component classes above regardless of layer order. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
