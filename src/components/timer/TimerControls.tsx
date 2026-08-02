@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PauseIcon, PlayIcon, ResetIcon, SkipIcon } from "@/components/ui/icons";
-import { useTimer } from "@/hooks/useTimer";
+import { useTimerActions, useTimerMode, useTimerStatus } from "@/hooks/useTimer";
 import { TIMER_MODE_LABELS } from "@/lib/format";
 
 /**
@@ -18,13 +18,19 @@ import { TIMER_MODE_LABELS } from "@/lib/format";
  * Reset opens a confirmation dialog before dispatching -- approved product
  * decision, and doc section 7: "Reset requires clear behavior and should
  * avoid accidental session completion."
+ *
+ * Reads `useTimerMode()`/`useTimerStatus()` (not `useTimer()`) so this
+ * component never re-renders on the once-a-second TICK -- see those hooks'
+ * docstring in hooks/useTimer.ts and architecture doc §10.
  */
 export function TimerControls() {
-  const { snapshot, start, pause, resume, reset, skip } = useTimer();
+  const mode = useTimerMode();
+  const status = useTimerStatus();
+  const { start, pause, resume, reset, skip } = useTimerActions();
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
 
-  const isRunning = snapshot.status === "running";
-  const isPaused = snapshot.status === "paused";
+  const isRunning = status === "running";
+  const isPaused = status === "paused";
 
   function handlePrimaryClick() {
     if (isRunning) pause();
@@ -39,7 +45,7 @@ export function TimerControls() {
       <div className="flex w-full max-w-md flex-col items-center gap-4">
         <Button
           variant="primary"
-          accent={snapshot.mode}
+          accent={mode}
           size="md"
           className="w-full max-w-xs sm:w-auto sm:min-w-56"
           onClick={handlePrimaryClick}
@@ -66,7 +72,7 @@ export function TimerControls() {
         onConfirm={reset}
         tone="danger"
         title="Reset this session?"
-        description={`This discards the current ${TIMER_MODE_LABELS[snapshot.mode].toLowerCase()} session's progress and sets the clock back to its full duration.`}
+        description={`This discards the current ${TIMER_MODE_LABELS[mode].toLowerCase()} session's progress and sets the clock back to its full duration.`}
         confirmLabel="Reset"
       />
     </>

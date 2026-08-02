@@ -1,6 +1,5 @@
 import { create } from "zustand";
-import { restoreSnapshot, timerConfigFromSettings, timerReducer } from "@/services/timer.service";
-import { loadTimerSnapshot } from "@/services/storage.service";
+import { createIdleSnapshot, timerConfigFromSettings, timerReducer } from "@/services/timer.service";
 import { useSettingsStore } from "./settings.store";
 import type { TimerEvent, TimerMode, TimerSnapshot } from "@/types/timer.types";
 
@@ -29,13 +28,26 @@ export interface TimerStoreState {
  * not this store -- keeping dispatch free of side effects keeps the FSM
  * trivially testable.
  *
- * The one exception is initial hydration: like `useSettingsStore`
- * (stores/settings.store.ts), this store seeds itself from
- * `services/storage.service.ts` at creation time so there is no
- * flash-of-default-state before a mount effect runs. `restoreSnapshot`
- * (services/timer.service.ts) recomputes `remainingMs` from `deadline`
- * against "now", so a timer left running while the tab was closed resolves
- * to its correct current interval on first read.
+ * Initial `snapshot` is deliberately the SSR-safe idle default (never reads
+ * `localStorage` at module-eval time) so the very first client render
+ * matches the server-rendered HTML exactly. A store that read an already-
+ * running or paused persisted snapshot here instead would make the client's
+ * first paint show "Pause" + a mid-countdown time while the server (no `window`)
+ * always renders "Start" + the full duration -- a structural mismatch (a
+ * different icon/button), not just differing text, which React cannot
+ * reconcile leniently: it throws a hydration error (React error #418) and
+ * discards/re-renders the whole subtree client-side, which is a worse and
+ * *slower* flash than the one this was trying to avoid.
+ *
+ * The real persisted snapshot is instead applied once via `restore()` from
+ * `hooks/useTimerEngine.ts`'s mount effect, run after hydration has already
+ * committed the matching default -- exactly the
+ * `node_modules/next/dist/docs/01-app/02-guides/preventing-flash-before-hydration.md`
+ * guide's "Date updates live (countdown timers, clocks): Use a Client
+ * Component with `useEffect`" row (its inline-script/`suppressHydrationWarning`
+ * technique is for a value that must be right at first paint with zero
+ * flash, e.g. theme; a per-second countdown value is already going to
+ * change again on its own a moment later regardless).
  */
 export const useTimerStore = create<TimerStoreState>((set, get) => {
   const initialConfig = timerConfigFromSettings(useSettingsStore.getState().durations);
@@ -46,7 +58,7 @@ export const useTimerStore = create<TimerStoreState>((set, get) => {
   }
 
   return {
-    snapshot: restoreSnapshot(loadTimerSnapshot(), initialConfig),
+    snapshot: createIdleSnapshot("focus", initialConfig.durations.focus),
     durations: initialConfig.durations,
     longBreakInterval: initialConfig.longBreakInterval,
 

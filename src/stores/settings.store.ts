@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { loadSettings, saveSettings } from "@/services/storage.service";
-import { defaultSettingsState, type SettingsState } from "@/types/storage";
+import { defaultSettingsState, type SettingsState, type SpotifyTrackRef } from "@/types/storage";
 
 export interface SettingsStoreState extends SettingsState {
   updateDurations: (durations: Partial<SettingsState["durations"]>) => void;
@@ -9,6 +9,9 @@ export interface SettingsStoreState extends SettingsState {
   setAlarmVolume: (alarmVolume: number) => void;
   setMusicVolume: (musicVolume: number) => void;
   setNotificationsEnabled: (notificationsEnabled: boolean) => void;
+  setAlarmSource: (alarmSource: SettingsState["alarmSource"]) => void;
+  setSpotifyAlarmTrack: (track: SpotifyTrackRef) => void;
+  setSpotifyAmbientTrack: (track: SpotifyTrackRef) => void;
   setAppearance: (appearance: Partial<SettingsState["appearance"]>) => void;
 }
 
@@ -20,6 +23,9 @@ function toSnapshot(state: SettingsState): SettingsState {
     alarmVolume: state.alarmVolume,
     musicVolume: state.musicVolume,
     notificationsEnabled: state.notificationsEnabled,
+    alarmSource: state.alarmSource,
+    spotifyAlarmTrack: state.spotifyAlarmTrack,
+    spotifyAmbientTrack: state.spotifyAmbientTrack,
     appearance: state.appearance,
   };
 }
@@ -56,6 +62,18 @@ export const useSettingsStore = create<SettingsStoreState>((set, get) => ({
   },
   setNotificationsEnabled: (notificationsEnabled) => {
     set({ notificationsEnabled });
+    saveSettings(toSnapshot(get()));
+  },
+  setAlarmSource: (alarmSource) => {
+    set({ alarmSource });
+    saveSettings(toSnapshot(get()));
+  },
+  setSpotifyAlarmTrack: (spotifyAlarmTrack) => {
+    set({ spotifyAlarmTrack });
+    saveSettings(toSnapshot(get()));
+  },
+  setSpotifyAmbientTrack: (spotifyAmbientTrack) => {
+    set({ spotifyAmbientTrack });
     saveSettings(toSnapshot(get()));
   },
   setAppearance: (appearance) => {

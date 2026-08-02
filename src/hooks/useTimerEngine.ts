@@ -4,11 +4,12 @@ import { useEffect, useRef } from "react";
 import { ALARM_SOUND_ID, ALARM_SOUND_SRC } from "@/constants/timer.constants";
 import { electLeader } from "@/lib/leader-election";
 import { audioService } from "@/services/audio.service";
+import { playSpotifyTrack } from "@/services/spotifyPlayback.service";
 import { notifySessionComplete } from "@/services/notification.service";
 import { recordCompletedSession } from "@/services/session.service";
 import { broadcastSnapshot, subscribeToSync } from "@/services/sync.service";
-import { saveTimerSnapshot } from "@/services/storage.service";
-import { timerConfigFromSettings } from "@/services/timer.service";
+import { loadTimerSnapshot, saveTimerSnapshot } from "@/services/storage.service";
+import { restoreSnapshot, timerConfigFromSettings } from "@/services/timer.service";
 import { useSettingsStore } from "@/stores/settings.store";
 import { useTimerStore } from "@/stores/timer.store";
 import { createTimerWorker, postToTimerWorker } from "@/workers/createTimerWorker";
@@ -53,6 +54,14 @@ function syncWorkerToSnapshot(worker: Worker | null, snapshot: TimerSnapshot): v
  *    and refreshes an idle snapshot's displayed duration immediately when
  *    settings change mid-idle (a running/paused session keeps its
  *    already-started duration).
+ * 6. Applies the persisted `pomodoro:timer:v1` snapshot (services/storage.service.ts)
+ *    once, here, on mount -- not at `stores/timer.store.ts` module-eval time
+ *    -- so the store's SSR-safe idle default is what both the server render
+ *    and the client's first hydration pass see (see that store's docstring
+ *    for the hydration-error this avoids). `restoreSnapshot` (services/timer.service.ts)
+ *    recomputes `remainingMs` from `deadline` against "now", so a timer left
+ *    running while the tab/browser was closed still resolves to its correct
+ *    current interval, just one effect tick after first paint instead of at it.
  *
  * Mount exactly once per tab -- see providers/TimerProvider.tsx. The store
  * (stores/timer.store.ts) and reducer (services/timer.service.ts) stay
@@ -65,7 +74,25 @@ export function useTimerEngine(): void {
   const isLeaderRef = useRef(false);
 
   useEffect(() => {
-    audioService.preload(ALARM_SOUND_ID, ALARM_SOUND_SRC);
+    // Defer fetching/buffering the alarm asset until a session is actually
+    // in flight, rather than unconditionally on every app load regardless
+    // of whether the timer is ever started this visit (Technical
+    // Architecture doc §10: "Lazy-load non-critical ... audio"). A session
+    // already `"running"`/`"paused"` at mount (e.g. a reload mid-session)
+    // preloads immediately; otherwise this waits for the first
+    // START/RESUME. Either way the alarm has at minimum the shortest
+    // configured interval's duration to finish buffering before a COMPLETE
+    // could possibly need it, so this never risks a late/missing alarm --
+    // `audioService.preload` is also idempotent (stores/skips by id), so
+    // calling it again on later transitions is a no-op.
+    function preloadIfSessionActive(status: string): void {
+      if (status === "running" || status === "paused") {
+        audioService.preload(ALARM_SOUND_ID, ALARM_SOUND_SRC);
+      }
+    }
+
+    preloadIfSessionActive(useTimerStore.getState().snapshot.status);
+    return useTimerStore.subscribe((state) => preloadIfSessionActive(state.snapshot.status));
   }, []);
 
   useEffect(() => {
@@ -80,6 +107,13 @@ export function useTimerEngine(): void {
   }, [durationsSettings]);
 
   useEffect(() => {
+    // Runs before the worker/sync subscriptions below are wired up, so this
+    // one-time restore never re-triggers the `saveTimerSnapshot`/
+    // `broadcastSnapshot` calls further down (those are for *new*
+    // transitions, not replaying the one we just loaded).
+    const { durations, longBreakInterval } = useTimerStore.getState();
+    useTimerStore.getState().restore(restoreSnapshot(loadTimerSnapshot(), { durations, longBreakInterval }));
+
     const worker = createTimerWorker();
     syncWorkerToSnapshot(worker, useTimerStore.getState().snapshot);
 
@@ -90,9 +124,16 @@ export function useTimerEngine(): void {
 
       const justCompleted = before.status === "running" && after.status !== "running";
       if (justCompleted && isLeaderRef.current) {
-        audioService.play(ALARM_SOUND_ID, { volume: useSettingsStore.getState().alarmVolume });
+        const settings = useSettingsStore.getState();
+        if (settings.alarmSource === "spotify" && settings.spotifyAlarmTrack?.uri) {
+          void playSpotifyTrack(settings.spotifyAlarmTrack.uri, settings.alarmVolume).catch(() => {
+            audioService.play(ALARM_SOUND_ID, { volume: settings.alarmVolume });
+          });
+        } else {
+          audioService.play(ALARM_SOUND_ID, { volume: settings.alarmVolume });
+        }
         void recordCompletedSession(before, Date.now());
-        notifySessionComplete(before, after, useSettingsStore.getState().notificationsEnabled);
+        notifySessionComplete(before, after, settings.notificationsEnabled);
       }
     }
     worker?.addEventListener("message", handleWorkerMessage);

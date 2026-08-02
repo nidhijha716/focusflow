@@ -1,52 +1,66 @@
 "use client";
 
-import { useId } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { CloseIcon, ImageIcon } from "@/components/ui/icons";
+import { BUNDLED_BACKGROUNDS, isCustomBackgroundId } from "@/constants/backgrounds.constants";
 import { cn } from "@/lib/cn";
+import {
+  listCustomBackgrounds,
+  removeCustomBackground,
+  toCustomBackgroundSettingsId,
+  uploadCustomBackground,
+} from "@/services/background.service";
 import { useSettingsStore } from "@/stores/settings.store";
-
-interface BundledBackground {
-  id: string;
-  name: string;
-  /** CSS color/gradient preview swatch -- original, non-photographic placeholders (doc 08 section 1: "do not copy the reference product's ... proprietary assets"). */
-  previewClassName: string;
-}
-
-const BUNDLED_BACKGROUNDS: BundledBackground[] = [
-  { id: "none", name: "None", previewClassName: "bg-surface-soft" },
-  { id: "focus-gradient", name: "Focus glow", previewClassName: "bg-[linear-gradient(135deg,var(--focus),var(--long-break))]" },
-  { id: "forest", name: "Forest", previewClassName: "bg-[linear-gradient(135deg,var(--short-break),var(--surface-soft))]" },
-  { id: "dusk", name: "Dusk", previewClassName: "bg-[linear-gradient(135deg,var(--long-break),var(--warning))]" },
-];
+import type { BackgroundRecord } from "@/types/background";
 
 export interface BackgroundPickerProps {
   open: boolean;
   onClose: () => void;
 }
 
-/**
- * `BackgroundPicker` -- bundled/custom backgrounds (doc
- * 05_Frontend_Specification.pdf section 4), UI-only per the Phase 3 brief.
- * Bundled swatches are plain CSS gradients from existing mode-accent tokens
- * (no bitmap assets to lazy-load yet, but the grid renders behind
- * `next/dynamic` in app/page.tsx so real thumbnail images added later don't
- * cost anything on first paint -- doc 05 section 11: "Lazy-load heavy
- * audio/background assets").
- *
- * Selecting a swatch persists immediately through the existing
- * `useSettingsStore.setAppearance` setter (`appearance.backgroundId`,
- * `@/types/storage`) -- the same field `SettingsDialog` and the real
- * `backgrounds` IndexedDB store (`@/db/repositories/backgroundRepository.ts`)
- * will read from once custom uploads are wired in Phase 4. Custom upload
- * (`lib/security/validateImage.ts` + `imageProcessing.ts`) is intentionally
- * left as a disabled stub here -- wiring the real pipeline is Phase 4 scope.
- */
 export function BackgroundPicker({ open, onClose }: BackgroundPickerProps) {
   const titleId = useId();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const backgroundId = useSettingsStore((state) => state.appearance.backgroundId);
   const setAppearance = useSettingsStore((state) => state.setAppearance);
+  const [customBackgrounds, setCustomBackgrounds] = useState<BackgroundRecord[]>([]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    void listCustomBackgrounds().then(setCustomBackgrounds);
+  }, [open]);
+
+  async function refreshCustomBackgrounds() {
+    setCustomBackgrounds(await listCustomBackgrounds());
+  }
+
+  async function handleUpload(file: File) {
+    setUploadError(null);
+    setUploading(true);
+    try {
+      const result = await uploadCustomBackground(file);
+      if (!result.ok) {
+        setUploadError(result.error);
+        return;
+      }
+      setAppearance({ backgroundId: result.settingsId });
+      await refreshCustomBackgrounds();
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleDeleteCustom(settingsId: string) {
+    await removeCustomBackground(settingsId);
+    if (backgroundId === settingsId) {
+      setAppearance({ backgroundId: null });
+    }
+    await refreshCustomBackgrounds();
+  }
 
   return (
     <Dialog open={open} onClose={onClose} labelledBy={titleId}>
@@ -58,6 +72,10 @@ export function BackgroundPicker({ open, onClose }: BackgroundPickerProps) {
           <CloseIcon className="size-5" />
         </Button>
       </div>
+
+      <p className="mt-2 text-xs text-text-secondary">
+        Backgrounds shift with your timer mode. Custom uploads are stored on this device only.
+      </p>
 
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
         {BUNDLED_BACKGROUNDS.map((background) => {
@@ -83,10 +101,64 @@ export function BackgroundPicker({ open, onClose }: BackgroundPickerProps) {
         })}
       </div>
 
-      <Button variant="secondary" size="sm" className="mt-4 w-full" disabled title="Custom uploads arrive in a later phase">
+      {customBackgrounds.length > 0 ? (
+        <div className="mt-5">
+          <h3 className="text-sm font-semibold text-text-primary">Your uploads</h3>
+          <ul className="mt-2 flex flex-col gap-2">
+            {customBackgrounds.map((background) => {
+              const settingsId = toCustomBackgroundSettingsId(background.id);
+              const selected = backgroundId === settingsId;
+              return (
+                <li key={background.id} className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAppearance({ backgroundId: settingsId })}
+                    aria-pressed={selected}
+                    className={cn(
+                      "control flex flex-1 items-center justify-between rounded-lg border px-3 py-2 text-left text-sm",
+                      selected ? "border-focus bg-surface-soft" : "border-border"
+                    )}
+                  >
+                    <span>{background.name}</span>
+                    {selected ? <span className="text-xs text-focus">Selected</span> : null}
+                  </button>
+                  <Button variant="ghost" size="sm" onClick={() => void handleDeleteCustom(settingsId)}>
+                    Delete
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/avif"
+        className="sr-only"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file) void handleUpload(file);
+        }}
+      />
+
+      <Button
+        variant="secondary"
+        size="sm"
+        className="mt-4 w-full"
+        disabled={uploading}
+        onClick={() => fileInputRef.current?.click()}
+      >
         <ImageIcon className="size-4" />
-        Upload custom background (coming soon)
+        {uploading ? "Uploading..." : "Upload custom background"}
       </Button>
+
+      {uploadError ? <p className="mt-2 text-xs text-danger">{uploadError}</p> : null}
+      {isCustomBackgroundId(backgroundId) ? (
+        <p className="mt-2 text-xs text-text-secondary">Custom image applied to the app background.</p>
+      ) : null}
     </Dialog>
   );
 }

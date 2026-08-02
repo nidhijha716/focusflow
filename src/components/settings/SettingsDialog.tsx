@@ -9,6 +9,8 @@ import { useHasMounted } from "@/hooks/useHasMounted";
 import { cn } from "@/lib/cn";
 import { formatMinutes, minutesToSeconds } from "@/lib/format";
 import { getNotificationPermissionStatus, requestNotificationPermission } from "@/lib/security/permissions";
+import { toSpotifyTrackRef } from "@/lib/spotify/api";
+import { SpotifyTrackSearch } from "@/components/spotify/SpotifyTrackSearch";
 import { useSettingsStore } from "@/stores/settings.store";
 
 export interface SettingsDialogProps {
@@ -231,6 +233,46 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
             className="control w-full accent-focus"
           />
         </Field>
+
+        <fieldset className="flex flex-col gap-3">
+          <legend className="text-sm font-semibold text-text-primary">Alarm sound</legend>
+          <div className="flex gap-2" role="radiogroup" aria-label="Alarm source">
+            {(["builtin", "spotify"] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                role="radio"
+                aria-checked={settings.alarmSource === option}
+                onClick={() => settings.setAlarmSource(option)}
+                className={cn(
+                  "control flex-1 rounded-pill border px-3 py-2 text-sm font-medium",
+                  settings.alarmSource === option
+                    ? "border-focus text-focus"
+                    : "border-border text-text-secondary"
+                )}
+              >
+                {option === "builtin" ? "Built-in beep" : "Spotify song"}
+              </button>
+            ))}
+          </div>
+          {settings.alarmSource === "spotify" ? (
+            <div className="rounded-lg border border-border bg-surface-soft p-3">
+              <SpotifyTrackSearch
+                label="Alarm track"
+                selectedUri={settings.spotifyAlarmTrack?.uri ?? null}
+                onSelect={(track) => settings.setSpotifyAlarmTrack(toSpotifyTrackRef(track))}
+                onClear={() => settings.setSpotifyAlarmTrack(null)}
+              />
+              {settings.spotifyAlarmTrack ? (
+                <p className="mt-2 text-xs text-text-secondary">
+                  Plays once when a session completes: {settings.spotifyAlarmTrack.name}
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-xs text-text-secondary">Uses the built-in alarm sound at session end.</p>
+          )}
+        </fieldset>
 
         <Field label="Ambient music volume" htmlFor={`${durationsId}-music-volume`}>
           <input

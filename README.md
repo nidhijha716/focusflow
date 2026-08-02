@@ -20,6 +20,23 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Performance
+
+Heavy, on-demand UI (Settings/Tasks dialogs, the ambient sound/background
+pickers, Picture-in-Picture) is code-split with `next/dynamic` so the
+timer-first hero stays light on first load, and the timer's once-a-second
+tick only re-renders the clock/progress components, not the whole page
+(Technical Architecture doc §10).
+
+To inspect the client/server bundle composition (Next.js 16's built-in,
+Turbopack-native analyzer -- no extra dependency required):
+
+```bash
+npm run analyze
+# or write a static report to .next/diagnostics/analyze instead of opening a server:
+npm run analyze -- --output
+```
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

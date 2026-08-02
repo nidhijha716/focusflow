@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/Button";
 import { PipIcon } from "@/components/ui/icons";
 import { usePiPSupport } from "@/hooks/usePiPSupport";
+import { useAppBackground } from "@/hooks/useAppBackground";
 import { useTimer } from "@/hooks/useTimer";
 import { formatClockTime, TIMER_MODE_SESSION_LABELS } from "@/lib/format";
 
@@ -40,23 +41,62 @@ function copyStylesInto(pipWindow: Window): void {
   }
 }
 
-function PipContent({ label, time }: { label: string; time: string }) {
+/** Mirror light/dark theme classes so CSS variables match the main page. */
+function syncThemeInto(pipWindow: Window): () => void {
+  const pipRoot = pipWindow.document.documentElement;
+  const sync = () => {
+    pipRoot.className = document.documentElement.className;
+    pipRoot.style.colorScheme = document.documentElement.style.colorScheme;
+  };
+  sync();
+  const observer = new MutationObserver(sync);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style"] });
+  return () => observer.disconnect();
+}
+
+/**
+ * Reads the live snapshot itself (rather than taking `label`/`time` as
+ * props) so the once-a-second TICK only re-renders this portalled leaf --
+ * never `PiPTimer`'s own button -- and only while a PiP window is actually
+ * open (this component is only mounted inside the `createPortal` call
+ * below). Architecture doc §10: "Avoid continuous React re-renders outside
+ * timer display/progress components."
+ */
+function PipContent() {
+  const { snapshot } = useTimer();
+  const { baseBackground, overlayBackground } = useAppBackground();
+
   return (
     <div
       style={{
+        position: "relative",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
         height: "100dvh",
         margin: 0,
-        background: "var(--bg)",
+        overflow: "hidden",
         color: "var(--text-primary)",
         fontFamily: "var(--font-sans, sans-serif)",
       }}
     >
-      <p style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", opacity: 0.7 }}>{label}</p>
-      <p style={{ fontSize: "2.5rem", fontWeight: 600, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{time}</p>
+      <div
+        aria-hidden="true"
+        style={{ position: "absolute", inset: 0, background: baseBackground, transition: "background 700ms ease-out" }}
+      />
+      <div
+        aria-hidden="true"
+        style={{ position: "absolute", inset: 0, background: overlayBackground, transition: "background 700ms ease-out" }}
+      />
+      <div style={{ position: "relative", textAlign: "center" }}>
+        <p style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em", opacity: 0.7 }}>
+          {TIMER_MODE_SESSION_LABELS[snapshot.mode]}
+        </p>
+        <p style={{ fontSize: "2.5rem", fontWeight: 600, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+          {formatClockTime(snapshot.remainingMs)}
+        </p>
+      </div>
     </div>
   );
 }
@@ -78,9 +118,9 @@ function PipContent({ label, time }: { label: string; time: string }) {
  */
 export function PiPTimer() {
   const supported = usePiPSupport();
-  const { snapshot } = useTimer();
   const [pipWindow, setPipWindow] = useState<Window | null>(null);
   const pipWindowRef = useRef<Window | null>(null);
+  const themeCleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     pipWindowRef.current = pipWindow;
@@ -88,6 +128,7 @@ export function PiPTimer() {
 
   useEffect(() => {
     return () => {
+      themeCleanupRef.current?.();
       pipWindowRef.current?.close();
     };
   }, []);
@@ -98,12 +139,20 @@ export function PiPTimer() {
 
     const pip = await documentPictureInPicture.requestWindow({ width: 260, height: 140 });
     copyStylesInto(pip);
+    themeCleanupRef.current?.();
+    themeCleanupRef.current = syncThemeInto(pip);
     pip.document.body.style.margin = "0";
-    pip.addEventListener("pagehide", () => setPipWindow(null), { once: true });
+    pip.addEventListener("pagehide", () => {
+      themeCleanupRef.current?.();
+      themeCleanupRef.current = null;
+      setPipWindow(null);
+    }, { once: true });
     setPipWindow(pip);
   }
 
   function closePiP() {
+    themeCleanupRef.current?.();
+    themeCleanupRef.current = null;
     pipWindow?.close();
     setPipWindow(null);
   }
@@ -129,12 +178,7 @@ export function PiPTimer() {
         <PipIcon className="size-4" />
         {pipWindow ? "Exit PiP" : "PiP"}
       </Button>
-      {pipWindow
-        ? createPortal(
-            <PipContent label={TIMER_MODE_SESSION_LABELS[snapshot.mode]} time={formatClockTime(snapshot.remainingMs)} />,
-            pipWindow.document.body
-          )
-        : null}
+      {pipWindow ? createPortal(<PipContent />, pipWindow.document.body) : null}
     </>
   );
 }

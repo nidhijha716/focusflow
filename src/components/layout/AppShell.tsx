@@ -1,4 +1,7 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { BackgroundLayer } from "@/components/layout/BackgroundLayer";
 
 export interface AppShellProps {
   header: ReactNode;
@@ -18,8 +21,9 @@ export interface AppShellProps {
  */
 export function AppShell({ header, children }: AppShellProps) {
   return (
-    <div className="flex min-h-dvh flex-col bg-bg text-text-primary">
-      <header className="border-b border-border">
+    <div className="relative flex min-h-dvh flex-col bg-transparent text-text-primary">
+      <BackgroundLayer />
+      <header className="border-b border-border/80 bg-surface/80 backdrop-blur-sm">
         <div className="app-shell flex h-14 items-center justify-between sm:h-16">{header}</div>
       </header>
       <main id="main-content" className="app-shell flex flex-1 flex-col">

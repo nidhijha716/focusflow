@@ -30,7 +30,7 @@ function buildCspDirectives(isDev: boolean): string {
   const directives: string[] = [
     `default-src 'self'`,
     // 'unsafe-inline' is required for Next.js's own inline bootstrap script when not using nonces.
-    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+    `script-src 'self' 'unsafe-inline' https://sdk.scdn.co${isDev ? " 'unsafe-eval'" : ""}`,
     // 'unsafe-inline' is required for Next.js/React-managed inline styles and Tailwind's
     // runtime-injected style tags (e.g. dev overlay) when not using nonces.
     `style-src 'self' 'unsafe-inline'`,
@@ -42,7 +42,7 @@ function buildCspDirectives(isDev: boolean): string {
     // No first-party API and no third-party network calls in the initial scope (no auth,
     // no analytics by default per §9). Tighten further (remove 'self') if a future phase
     // introduces a dedicated API origin instead of same-origin route handlers.
-    `connect-src 'self'`,
+    `connect-src 'self' https://api.spotify.com https://accounts.spotify.com https://sdk.scdn.co`,
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,

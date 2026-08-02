@@ -4,8 +4,13 @@ import { useEffect, useId, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { CloseIcon, MusicIcon, PauseIcon, PlayIcon } from "@/components/ui/icons";
+import { SpotifyTrackSearch } from "@/components/spotify/SpotifyTrackSearch";
 import { cn } from "@/lib/cn";
+import { toSpotifyTrackRef } from "@/lib/spotify/api";
+import { getValidSpotifyAccessToken } from "@/lib/spotify/auth";
+import type { SpotifyTrack } from "@/lib/spotify/types";
 import { audioService } from "@/services/audio.service";
+import { pauseSpotifyPlayback, playSpotifyTrack, resumeSpotifyPlayback, setSpotifyVolume, stopSpotifyPlayback } from "@/services/spotifyPlayback.service";
 import { useSettingsStore } from "@/stores/settings.store";
 
 interface MusicTrack {
@@ -14,15 +19,6 @@ interface MusicTrack {
   src: string;
 }
 
-/**
- * Placeholder catalog -- no licensed ambient-audio assets exist yet (same
- * status as `ALARM_SOUND_SRC` in constants/timer.constants.ts). `src` paths
- * are wired for real playback through `services/audio.service.ts` already;
- * once licensed files land at these paths under `public/sounds/ambient/`,
- * playback starts working with no further code changes. Until then,
- * `audioService.play`'s `.catch(() => {})` degrades a missing-file rejection
- * to a silent no-op instead of a broken player.
- */
 const TRACKS: MusicTrack[] = [
   { id: "rain", name: "Rain", src: "/sounds/ambient/rain.mp3" },
   { id: "cafe", name: "Cafe ambience", src: "/sounds/ambient/cafe.mp3" },
@@ -30,58 +26,88 @@ const TRACKS: MusicTrack[] = [
   { id: "lofi", name: "Lo-fi loop", src: "/sounds/ambient/lofi.mp3" },
 ];
 
+type SoundSource = "builtin" | "spotify";
+
 export interface MusicPlayerProps {
   open: boolean;
   onClose: () => void;
 }
 
-/**
- * `MusicPlayer` -- track and volume controls (doc
- * 05_Frontend_Specification.pdf section 4). Wired to the real
- * `services/audio.service.ts` play/stop/setVolume contract (Phase 4
- * scope) -- selecting a track preloads + plays it looped at the current
- * `musicVolume`; switching tracks stops the previous one first so at most
- * one plays at a time; no licensed asset files exist yet (see `TRACKS`),
- * so playback currently degrades to a silent no-op rather than erroring,
- * while every control still works exactly as it will once real files are
- * added. Volume persists immediately through the existing
- * `useSettingsStore.setMusicVolume` setter, the same store `SettingsDialog`
- * writes to, and is applied live to whichever track is currently playing.
- */
 export function MusicPlayer({ open, onClose }: MusicPlayerProps) {
   const titleId = useId();
   const musicVolume = useSettingsStore((state) => state.musicVolume);
   const setMusicVolume = useSettingsStore((state) => state.setMusicVolume);
+  const spotifyAmbientTrack = useSettingsStore((state) => state.spotifyAmbientTrack);
+  const setSpotifyAmbientTrack = useSettingsStore((state) => state.setSpotifyAmbientTrack);
+
+  const [source, setSource] = useState<SoundSource>(spotifyAmbientTrack ? "spotify" : "builtin");
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [spotifyPlaying, setSpotifyPlaying] = useState(false);
 
   useEffect(() => {
-    if (!isPlaying || !selectedTrackId) return;
+    if (!isPlaying || !selectedTrackId || source !== "builtin") return;
     audioService.setVolume(selectedTrackId, musicVolume);
-  }, [musicVolume, isPlaying, selectedTrackId]);
+  }, [musicVolume, isPlaying, selectedTrackId, source]);
 
-  function playTrack(trackId: string) {
+  useEffect(() => {
+    if (!spotifyPlaying || source !== "spotify") return;
+    void setSpotifyVolume(musicVolume);
+  }, [musicVolume, spotifyPlaying, source]);
+
+  function playBuiltinTrack(trackId: string) {
     const track = TRACKS.find((candidate) => candidate.id === trackId);
     if (!track) return;
     audioService.preload(track.id, track.src);
     audioService.play(track.id, { loop: true, volume: musicVolume });
   }
 
-  function handleTrackClick(trackId: string) {
+  function handleBuiltinTrackClick(trackId: string) {
+    void stopSpotifyPlayback();
+    setSpotifyPlaying(false);
+
     if (selectedTrackId === trackId) {
       if (isPlaying) {
         audioService.stop(trackId);
         setIsPlaying(false);
       } else {
-        playTrack(trackId);
+        playBuiltinTrack(trackId);
         setIsPlaying(true);
       }
       return;
     }
     if (selectedTrackId) audioService.stop(selectedTrackId);
     setSelectedTrackId(trackId);
-    playTrack(trackId);
+    playBuiltinTrack(trackId);
     setIsPlaying(true);
+  }
+
+  async function handleSpotifySelect(track: SpotifyTrack) {
+    audioService.stopAll();
+    setSelectedTrackId(null);
+    setIsPlaying(false);
+
+    setSpotifyAmbientTrack(toSpotifyTrackRef(track));
+    const token = await getValidSpotifyAccessToken();
+    if (!token) return;
+
+    try {
+      await playSpotifyTrack(track.uri, musicVolume);
+      setSpotifyPlaying(true);
+    } catch {
+      setSpotifyPlaying(false);
+    }
+  }
+
+  async function toggleSpotifyPlayback() {
+    if (!spotifyAmbientTrack) return;
+    if (spotifyPlaying) {
+      await pauseSpotifyPlayback();
+      setSpotifyPlaying(false);
+      return;
+    }
+    await resumeSpotifyPlayback();
+    setSpotifyPlaying(true);
   }
 
   return (
@@ -95,27 +121,70 @@ export function MusicPlayer({ open, onClose }: MusicPlayerProps) {
         </Button>
       </div>
 
-      <ul className="mt-4 flex flex-col gap-2">
-        {TRACKS.map((track) => {
-          const active = track.id === selectedTrackId;
-          return (
-            <li key={track.id}>
-              <button
-                type="button"
-                onClick={() => handleTrackClick(track.id)}
-                aria-pressed={active && isPlaying}
-                className={cn(
-                  "control flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left text-sm font-medium",
-                  active ? "border-focus bg-surface-soft text-text-primary" : "border-border text-text-secondary"
-                )}
-              >
-                {active && isPlaying ? <PauseIcon className="size-4" /> : <PlayIcon className="size-4" />}
-                {track.name}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="mt-4 flex gap-2" role="tablist" aria-label="Sound source">
+        {(["builtin", "spotify"] as const).map((option) => (
+          <button
+            key={option}
+            type="button"
+            role="tab"
+            aria-selected={source === option}
+            onClick={() => setSource(option)}
+            className={cn(
+              "control flex-1 rounded-pill border px-3 py-2 text-sm font-medium",
+              source === option ? "border-focus text-focus" : "border-border text-text-secondary"
+            )}
+          >
+            {option === "builtin" ? "Built-in" : "Spotify"}
+          </button>
+        ))}
+      </div>
+
+      {source === "builtin" ? (
+        <ul className="mt-4 flex flex-col gap-2">
+          {TRACKS.map((track) => {
+            const active = track.id === selectedTrackId;
+            return (
+              <li key={track.id}>
+                <button
+                  type="button"
+                  onClick={() => handleBuiltinTrackClick(track.id)}
+                  aria-pressed={active && isPlaying}
+                  className={cn(
+                    "control flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left text-sm font-medium",
+                    active ? "border-focus bg-surface-soft text-text-primary" : "border-border text-text-secondary"
+                  )}
+                >
+                  {active && isPlaying ? <PauseIcon className="size-4" /> : <PlayIcon className="size-4" />}
+                  {track.name}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <div className="mt-4 flex flex-col gap-3">
+          <SpotifyTrackSearch
+            label="Search Spotify"
+            selectedUri={spotifyAmbientTrack?.uri ?? null}
+            onSelect={(track) => void handleSpotifySelect(track)}
+            onClear={() => {
+              void stopSpotifyPlayback();
+              setSpotifyAmbientTrack(null);
+              setSpotifyPlaying(false);
+            }}
+          />
+          {spotifyAmbientTrack ? (
+            <div className="rounded-lg border border-border bg-surface-soft px-3 py-2 text-sm">
+              <p className="font-medium text-text-primary">{spotifyAmbientTrack.name}</p>
+              <p className="text-xs text-text-secondary">{spotifyAmbientTrack.artist}</p>
+              <Button variant="secondary" size="sm" className="mt-2" onClick={() => void toggleSpotifyPlayback()}>
+                {spotifyPlaying ? "Pause" : "Play"}
+              </Button>
+            </div>
+          ) : null}
+          <p className="text-xs text-text-secondary">Spotify playback requires Premium.</p>
+        </div>
+      )}
 
       <div className="mt-5">
         <label htmlFor={`${titleId}-volume`} className="flex items-center justify-between text-sm text-text-secondary">

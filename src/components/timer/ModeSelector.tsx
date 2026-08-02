@@ -1,6 +1,6 @@
 "use client";
 
-import { useTimer } from "@/hooks/useTimer";
+import { useTimerActions, useTimerMode, useTimerStatus } from "@/hooks/useTimer";
 import { cn } from "@/lib/cn";
 import { TIMER_MODE_LABELS } from "@/lib/format";
 import { TIMER_MODES, type TimerMode } from "@/types/storage";
@@ -23,15 +23,21 @@ const ACCENT_TEXT_CLASSES: Record<TimerMode, string> = {
  * `CHANGE_MODE` transition originating from an idle/paused snapshot, so it
  * can never be confused with a SKIP/COMPLETE transition (see
  * hooks/useSessionCompletionAnnouncer.ts's detection heuristic).
+ *
+ * Reads `useTimerMode()`/`useTimerStatus()` (not `useTimer()`) so this
+ * component never re-renders on the once-a-second TICK -- see those hooks'
+ * docstring in hooks/useTimer.ts and architecture doc §10.
  */
 export function ModeSelector() {
-  const { snapshot, changeMode } = useTimer();
-  const disabled = snapshot.status === "running";
+  const currentMode = useTimerMode();
+  const status = useTimerStatus();
+  const { changeMode } = useTimerActions();
+  const disabled = status === "running";
 
   return (
     <div role="radiogroup" aria-label="Timer mode" className="flex w-full max-w-md gap-2">
       {TIMER_MODES.map((mode) => {
-        const active = snapshot.mode === mode;
+        const active = currentMode === mode;
         return (
           <button
             key={mode}

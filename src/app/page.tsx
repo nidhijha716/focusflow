@@ -5,27 +5,31 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Header } from "@/components/layout/Header";
 import { TimerHero } from "@/components/timer/TimerHero";
-import { TaskPanel } from "@/components/tasks/TaskPanel";
 import { StatsView } from "@/components/stats/StatsView";
 import { StreakIndicator } from "@/components/stats/StreakIndicator";
 import { ChallengeCard } from "@/components/challenge/ChallengeCard";
-import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { Stopwatch } from "@/components/stopwatch/Stopwatch";
-import { PiPTimer } from "@/components/pip/PiPTimer";
 import { Button } from "@/components/ui/Button";
 import { MusicIcon, ImageIcon, StopwatchIcon } from "@/components/ui/icons";
 import { DAILY_CHALLENGE_TARGET_FOCUS_SESSIONS } from "@/services/challenge.service";
 import { useStatsStore } from "@/stores/stats.store";
 
-// Ambient sound and background pickers pull in per-track/per-swatch assets
-// as the real catalog grows -- code-split them so the timer-first hero
-// above never waits on that bundle (doc 05_Frontend_Specification.pdf
-// section 11: "Lazy-load heavy audio/background assets"; pattern from
+// Every dialog/panel below is opened on demand (a button toggle, never the
+// first paint) and each pulls in its own non-trivial subtree (task tree
+// recursion, settings form, per-track/per-swatch asset catalogs, the
+// Document Picture-in-Picture + createPortal machinery) -- code-split them
+// so the timer-first hero above never waits on any of that bundle weight
+// (doc 05_Frontend_Specification.pdf section 11: "Lazy-load heavy
+// audio/background assets"; Technical Architecture doc §10: "Keep
+// first-load JavaScript ... controlled"; pattern from
 // node_modules/next/dist/docs/01-app/02-guides/lazy-loading.md).
 const MusicPlayer = dynamic(() => import("@/components/music/MusicPlayer").then((mod) => mod.MusicPlayer));
 const BackgroundPicker = dynamic(() =>
   import("@/components/background/BackgroundPicker").then((mod) => mod.BackgroundPicker)
 );
+const SettingsDialog = dynamic(() => import("@/components/settings/SettingsDialog").then((mod) => mod.SettingsDialog));
+const TaskPanel = dynamic(() => import("@/components/tasks/TaskPanel").then((mod) => mod.TaskPanel));
+const PiPTimer = dynamic(() => import("@/components/pip/PiPTimer").then((mod) => mod.PiPTimer));
 
 type UtilityPanel = "music" | "background" | "stopwatch" | null;
 

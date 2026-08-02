@@ -48,6 +48,17 @@ export function defaultTimerState(): TimerState {
   };
 }
 
+export const SpotifyTrackRefSchema = z
+  .object({
+    id: z.string().min(1),
+    uri: z.string().min(1),
+    name: z.string().min(1),
+    artist: z.string(),
+  })
+  .nullable();
+
+export type SpotifyTrackRef = z.infer<typeof SpotifyTrackRefSchema>;
+
 /** `pomodoro:settings:v1` */
 export const SettingsStateSchema = z.object({
   durations: z.object({
@@ -61,6 +72,9 @@ export const SettingsStateSchema = z.object({
   alarmVolume: z.number().min(0).max(1),
   musicVolume: z.number().min(0).max(1),
   notificationsEnabled: z.boolean(),
+  alarmSource: z.enum(["builtin", "spotify"]).default("builtin"),
+  spotifyAlarmTrack: SpotifyTrackRefSchema.default(null),
+  spotifyAmbientTrack: SpotifyTrackRefSchema.default(null),
   appearance: z.object({
     theme: z.enum(["light", "dark", "system"]),
     backgroundId: z.string().min(1).nullable(),
@@ -82,6 +96,9 @@ export function defaultSettingsState(): SettingsState {
     alarmVolume: 1,
     musicVolume: 0.5,
     notificationsEnabled: true,
+    alarmSource: "builtin",
+    spotifyAlarmTrack: null,
+    spotifyAmbientTrack: null,
     appearance: {
       theme: "system",
       backgroundId: null,
