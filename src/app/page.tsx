@@ -73,7 +73,7 @@ export default function Home() {
         <div className="flex flex-wrap items-center justify-center gap-2">
           <Button variant="ghost" size="sm" aria-pressed={activePanel === "music"} onClick={() => toggleUtilityPanel("music")}>
             <MusicIcon className="size-4" />
-            Sound
+            Spotify
           </Button>
           <Button
             variant="ghost"

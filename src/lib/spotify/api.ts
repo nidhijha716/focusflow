@@ -1,9 +1,22 @@
 import type { SpotifySearchResponse, SpotifyTrack } from "@/lib/spotify/types";
 import { getValidSpotifyAccessToken } from "@/lib/spotify/auth";
 
+function spotifyErrorMessage(status: number, body: unknown): string {
+  if (body && typeof body === "object" && "error" in body) {
+    const error = (body as { error?: { message?: string } }).error;
+    if (error?.message) return error.message;
+  }
+  if (status === 403) {
+    return "Spotify denied access. Connect with Premium, add your account under Users and Access in the Spotify Dashboard, then reconnect.";
+  }
+  return `Spotify search failed (${status}).`;
+}
+
 export async function searchSpotifyTracks(query: string): Promise<SpotifyTrack[]> {
   const accessToken = await getValidSpotifyAccessToken();
-  if (!accessToken) return [];
+  if (!accessToken) {
+    throw new Error("Connect Spotify first.");
+  }
 
   const params = new URLSearchParams({
     q: query.trim(),
@@ -15,7 +28,10 @@ export async function searchSpotifyTracks(query: string): Promise<SpotifyTrack[]
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 
-  if (!response.ok) return [];
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(spotifyErrorMessage(response.status, body));
+  }
 
   const payload = (await response.json()) as SpotifySearchResponse;
   return payload.tracks.items.map((item) => ({
@@ -34,5 +50,6 @@ export function toSpotifyTrackRef(track: SpotifyTrack) {
     uri: track.uri,
     name: track.name,
     artist: track.artist,
+    albumArtUrl: track.albumArtUrl,
   };
 }

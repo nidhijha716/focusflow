@@ -4,29 +4,19 @@ import { useEffect, useId, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { CloseIcon, MusicIcon, PauseIcon, PlayIcon } from "@/components/ui/icons";
+import { SpotifyConnectButton } from "@/components/spotify/SpotifyConnectButton";
 import { SpotifyTrackSearch } from "@/components/spotify/SpotifyTrackSearch";
-import { cn } from "@/lib/cn";
 import { toSpotifyTrackRef } from "@/lib/spotify/api";
 import { getValidSpotifyAccessToken } from "@/lib/spotify/auth";
 import type { SpotifyTrack } from "@/lib/spotify/types";
-import { audioService } from "@/services/audio.service";
-import { pauseSpotifyPlayback, playSpotifyTrack, resumeSpotifyPlayback, setSpotifyVolume, stopSpotifyPlayback } from "@/services/spotifyPlayback.service";
+import {
+  pauseSpotifyPlayback,
+  playSpotifyTrack,
+  resumeSpotifyPlayback,
+  setSpotifyVolume,
+  stopSpotifyPlayback,
+} from "@/services/spotifyPlayback.service";
 import { useSettingsStore } from "@/stores/settings.store";
-
-interface MusicTrack {
-  id: string;
-  name: string;
-  src: string;
-}
-
-const TRACKS: MusicTrack[] = [
-  { id: "rain", name: "Rain", src: "/sounds/ambient/rain.mp3" },
-  { id: "cafe", name: "Cafe ambience", src: "/sounds/ambient/cafe.mp3" },
-  { id: "brown-noise", name: "Brown noise", src: "/sounds/ambient/brown-noise.mp3" },
-  { id: "lofi", name: "Lo-fi loop", src: "/sounds/ambient/lofi.mp3" },
-];
-
-type SoundSource = "builtin" | "spotify";
 
 export interface MusicPlayerProps {
   open: boolean;
@@ -40,169 +30,154 @@ export function MusicPlayer({ open, onClose }: MusicPlayerProps) {
   const spotifyAmbientTrack = useSettingsStore((state) => state.spotifyAmbientTrack);
   const setSpotifyAmbientTrack = useSettingsStore((state) => state.setSpotifyAmbientTrack);
 
-  const [source, setSource] = useState<SoundSource>(spotifyAmbientTrack ? "spotify" : "builtin");
-  const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [connected, setConnected] = useState(false);
   const [spotifyPlaying, setSpotifyPlaying] = useState(false);
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isPlaying || !selectedTrackId || source !== "builtin") return;
-    audioService.setVolume(selectedTrackId, musicVolume);
-  }, [musicVolume, isPlaying, selectedTrackId, source]);
-
-  useEffect(() => {
-    if (!spotifyPlaying || source !== "spotify") return;
+    if (!spotifyPlaying) return;
     void setSpotifyVolume(musicVolume);
-  }, [musicVolume, spotifyPlaying, source]);
-
-  function playBuiltinTrack(trackId: string) {
-    const track = TRACKS.find((candidate) => candidate.id === trackId);
-    if (!track) return;
-    audioService.preload(track.id, track.src);
-    audioService.play(track.id, { loop: true, volume: musicVolume });
-  }
-
-  function handleBuiltinTrackClick(trackId: string) {
-    void stopSpotifyPlayback();
-    setSpotifyPlaying(false);
-
-    if (selectedTrackId === trackId) {
-      if (isPlaying) {
-        audioService.stop(trackId);
-        setIsPlaying(false);
-      } else {
-        playBuiltinTrack(trackId);
-        setIsPlaying(true);
-      }
-      return;
-    }
-    if (selectedTrackId) audioService.stop(selectedTrackId);
-    setSelectedTrackId(trackId);
-    playBuiltinTrack(trackId);
-    setIsPlaying(true);
-  }
+  }, [musicVolume, spotifyPlaying]);
 
   async function handleSpotifySelect(track: SpotifyTrack) {
-    audioService.stopAll();
-    setSelectedTrackId(null);
-    setIsPlaying(false);
-
+    setPlaybackError(null);
     setSpotifyAmbientTrack(toSpotifyTrackRef(track));
     const token = await getValidSpotifyAccessToken();
-    if (!token) return;
+    if (!token) {
+      setPlaybackError("Connect Spotify before playing.");
+      return;
+    }
 
     try {
       await playSpotifyTrack(track.uri, musicVolume);
       setSpotifyPlaying(true);
-    } catch {
+    } catch (error) {
       setSpotifyPlaying(false);
+      setPlaybackError(error instanceof Error ? error.message : "Could not start playback.");
     }
   }
 
   async function toggleSpotifyPlayback() {
     if (!spotifyAmbientTrack) return;
+    setPlaybackError(null);
     if (spotifyPlaying) {
       await pauseSpotifyPlayback();
       setSpotifyPlaying(false);
       return;
     }
-    await resumeSpotifyPlayback();
-    setSpotifyPlaying(true);
+    try {
+      await resumeSpotifyPlayback();
+      setSpotifyPlaying(true);
+    } catch (error) {
+      setPlaybackError(error instanceof Error ? error.message : "Could not resume playback.");
+    }
+  }
+
+  async function handleClearTrack() {
+    await stopSpotifyPlayback();
+    setSpotifyAmbientTrack(null);
+    setSpotifyPlaying(false);
+    setPlaybackError(null);
   }
 
   return (
     <Dialog open={open} onClose={onClose} labelledBy={titleId}>
-      <div className="flex items-center justify-between">
-        <h2 id={titleId} className="text-lg font-semibold text-text-primary">
-          Ambient sound
-        </h2>
-        <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close ambient sound">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="flex size-8 items-center justify-center rounded-full bg-[#1db954]/15 text-[#1db954]">
+            <MusicIcon className="size-4" />
+          </span>
+          <div>
+            <h2 id={titleId} className="text-lg font-semibold text-text-primary">
+              Spotify
+            </h2>
+            <p className="text-xs text-text-secondary">Focus music while you work</p>
+          </div>
+        </div>
+        <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close Spotify panel">
           <CloseIcon className="size-5" />
         </Button>
       </div>
 
-      <div className="mt-4 flex gap-2" role="tablist" aria-label="Sound source">
-        {(["builtin", "spotify"] as const).map((option) => (
-          <button
-            key={option}
-            type="button"
-            role="tab"
-            aria-selected={source === option}
-            onClick={() => setSource(option)}
-            className={cn(
-              "control flex-1 rounded-pill border px-3 py-2 text-sm font-medium",
-              source === option ? "border-focus text-focus" : "border-border text-text-secondary"
+      <div className="mt-4 flex flex-col gap-4">
+        <SpotifyConnectButton variant="banner" onConnectionChange={setConnected} />
+
+        {spotifyAmbientTrack ? (
+          <div className="flex items-center gap-3 rounded-xl border border-border bg-surface-soft p-3">
+            {spotifyAmbientTrack.albumArtUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={spotifyAmbientTrack.albumArtUrl}
+                alt=""
+                className="size-16 shrink-0 rounded-lg object-cover shadow-md"
+              />
+            ) : (
+              <span className="flex size-16 shrink-0 items-center justify-center rounded-lg bg-surface text-text-secondary">
+                <MusicIcon className="size-6" />
+              </span>
             )}
-          >
-            {option === "builtin" ? "Built-in" : "Spotify"}
-          </button>
-        ))}
-      </div>
-
-      {source === "builtin" ? (
-        <ul className="mt-4 flex flex-col gap-2">
-          {TRACKS.map((track) => {
-            const active = track.id === selectedTrackId;
-            return (
-              <li key={track.id}>
-                <button
-                  type="button"
-                  onClick={() => handleBuiltinTrackClick(track.id)}
-                  aria-pressed={active && isPlaying}
-                  className={cn(
-                    "control flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left text-sm font-medium",
-                    active ? "border-focus bg-surface-soft text-text-primary" : "border-border text-text-secondary"
-                  )}
-                >
-                  {active && isPlaying ? <PauseIcon className="size-4" /> : <PlayIcon className="size-4" />}
-                  {track.name}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <div className="mt-4 flex flex-col gap-3">
-          <SpotifyTrackSearch
-            label="Search Spotify"
-            selectedUri={spotifyAmbientTrack?.uri ?? null}
-            onSelect={(track) => void handleSpotifySelect(track)}
-            onClear={() => {
-              void stopSpotifyPlayback();
-              setSpotifyAmbientTrack(null);
-              setSpotifyPlaying(false);
-            }}
-          />
-          {spotifyAmbientTrack ? (
-            <div className="rounded-lg border border-border bg-surface-soft px-3 py-2 text-sm">
-              <p className="font-medium text-text-primary">{spotifyAmbientTrack.name}</p>
-              <p className="text-xs text-text-secondary">{spotifyAmbientTrack.artist}</p>
-              <Button variant="secondary" size="sm" className="mt-2" onClick={() => void toggleSpotifyPlayback()}>
-                {spotifyPlaying ? "Pause" : "Play"}
-              </Button>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-text-primary">{spotifyAmbientTrack.name}</p>
+              <p className="truncate text-xs text-text-secondary">{spotifyAmbientTrack.artist}</p>
+              <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-[#1db954]">
+                {spotifyPlaying ? "Now playing" : "Paused"}
+              </p>
             </div>
-          ) : null}
-          <p className="text-xs text-text-secondary">Spotify playback requires Premium.</p>
-        </div>
-      )}
+            <Button
+              variant="primary"
+              accent="focus"
+              size="sm"
+              aria-label={spotifyPlaying ? "Pause" : "Play"}
+              onClick={() => void toggleSpotifyPlayback()}
+            >
+              {spotifyPlaying ? <PauseIcon className="size-4" /> : <PlayIcon className="size-4" />}
+            </Button>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-border px-4 py-6 text-center">
+            <MusicIcon className="mx-auto size-8 text-text-secondary/60" />
+            <p className="mt-2 text-sm font-medium text-text-primary">No track selected</p>
+            <p className="mt-1 text-xs text-text-secondary">Search below and pick a song to play while you focus.</p>
+          </div>
+        )}
 
-      <div className="mt-5">
-        <label htmlFor={`${titleId}-volume`} className="flex items-center justify-between text-sm text-text-secondary">
-          <span className="flex items-center gap-1.5">
-            <MusicIcon className="size-4" /> Volume
-          </span>
-          <span className="tabular-nums">{Math.round(musicVolume * 100)}%</span>
-        </label>
-        <input
-          id={`${titleId}-volume`}
-          type="range"
-          min={0}
-          max={1}
-          step={0.05}
-          value={musicVolume}
-          onChange={(event) => setMusicVolume(Number(event.target.value))}
-          className="control mt-2 w-full accent-focus"
+        {playbackError ? (
+          <p className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-xs text-danger">{playbackError}</p>
+        ) : null}
+
+        <SpotifyTrackSearch
+          label="Search"
+          selectedUri={spotifyAmbientTrack?.uri ?? null}
+          hideConnect
+          connected={connected}
+          onSelect={(track) => void handleSpotifySelect(track)}
+          onClear={() => void handleClearTrack()}
         />
+
+        {!connected ? (
+          <p className="text-xs text-text-secondary">Connect Spotify above to enable search and playback.</p>
+        ) : (
+          <p className="text-xs text-text-secondary">Streaming requires Spotify Premium and a connected account.</p>
+        )}
+
+        <div className="rounded-xl border border-border bg-surface-soft/50 px-3 py-3">
+          <label htmlFor={`${titleId}-volume`} className="flex items-center justify-between text-sm text-text-secondary">
+            <span className="flex items-center gap-1.5 font-medium text-text-primary">
+              <MusicIcon className="size-4" /> Playback volume
+            </span>
+            <span className="tabular-nums">{Math.round(musicVolume * 100)}%</span>
+          </label>
+          <input
+            id={`${titleId}-volume`}
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={musicVolume}
+            onChange={(event) => setMusicVolume(Number(event.target.value))}
+            className="control mt-2 w-full accent-[#1db954]"
+          />
+        </div>
       </div>
     </Dialog>
   );

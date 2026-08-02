@@ -54,6 +54,7 @@ export const SpotifyTrackRefSchema = z
     uri: z.string().min(1),
     name: z.string().min(1),
     artist: z.string(),
+    albumArtUrl: z.string().nullable().optional(),
   })
   .nullable();
 
@@ -72,7 +73,7 @@ export const SettingsStateSchema = z.object({
   alarmVolume: z.number().min(0).max(1),
   musicVolume: z.number().min(0).max(1),
   notificationsEnabled: z.boolean(),
-  alarmSource: z.enum(["builtin", "spotify"]).default("builtin"),
+  alarmSource: z.enum(["builtin", "spotify"]).default("spotify"),
   spotifyAlarmTrack: SpotifyTrackRefSchema.default(null),
   spotifyAmbientTrack: SpotifyTrackRefSchema.default(null),
   appearance: z.object({
@@ -96,7 +97,7 @@ export function defaultSettingsState(): SettingsState {
     alarmVolume: 1,
     musicVolume: 0.5,
     notificationsEnabled: true,
-    alarmSource: "builtin",
+    alarmSource: "spotify",
     spotifyAlarmTrack: null,
     spotifyAmbientTrack: null,
     appearance: {
