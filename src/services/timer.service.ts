@@ -1,4 +1,5 @@
 import { DEFAULT_DURATIONS_MS, LONG_BREAK_INTERVAL } from "@/constants/timer.constants";
+import type { SettingsState } from "@/types/storage";
 import type { TimerEvent, TimerMode, TimerSnapshot } from "@/types/timer.types";
 
 export interface TimerReducerContext {
@@ -7,8 +8,29 @@ export interface TimerReducerContext {
   longBreakInterval: number;
 }
 
+/** The non-time-dependent half of `TimerReducerContext` -- everything the settings store owns. */
+export type TimerConfig = Pick<TimerReducerContext, "durations" | "longBreakInterval">;
+
 /**
- * Deadline algorithm (see 02_Technical_Architecture §4):
+ * Converts the canonical `pomodoro:settings:v1` durations (seconds, per
+ * `@/types/storage`'s `SettingsState`) into the ms-based `TimerConfig` the
+ * reducer expects. This is the single place that does the seconds->ms
+ * conversion so the store and its wiring hook never hard-code
+ * `DEFAULT_DURATIONS_MS` once real user settings are available.
+ */
+export function timerConfigFromSettings(durations: SettingsState["durations"]): TimerConfig {
+  return {
+    durations: {
+      focus: durations.focusSeconds * 1000,
+      short_break: durations.shortBreakSeconds * 1000,
+      long_break: durations.longBreakSeconds * 1000,
+    },
+    longBreakInterval: durations.longBreakInterval,
+  };
+}
+
+/**
+ * Deadline algorithm (see 02_Technical_Architecture section 4):
  *   deadline = Date.now() + remainingMs
  *   remainingMs = max(0, deadline - Date.now())
  * `deadline` is null whenever the timer is not actively running, so
@@ -30,6 +52,34 @@ export function createIdleSnapshot(mode: TimerMode, durationMs: number): TimerSn
   };
 }
 
+/**
+ * Recovery path for a snapshot loaded from `services/storage.service.ts`
+ * (`pomodoro:timer:v1`) at app start.
+ *
+ * `defaultTimerState()` (@/types/storage, Agent 3) reports `durationMs: 0` /
+ * `remainingMs: 0` / `deadline: null` as its sentinel for "nothing has ever
+ * been saved for this browser" -- that combination can never come from a
+ * real save (settings durations are `z.number().int().positive()`), so it's
+ * safe to treat it as "first run" and hand back a fresh idle snapshot sized
+ * from the caller's current settings-driven durations instead of a
+ * zero-length countdown.
+ *
+ * Otherwise, if the persisted snapshot was `"running"`, this replays a
+ * single `TICK` at `now` through the same pure reducer used at runtime
+ * (see `computeRemainingMs`) so a timer left running while the tab/browser
+ * was closed resolves to the correct current interval: still running with
+ * less time left, or already past its deadline and rolled over to the next
+ * mode (deadline-based recovery, 02_Technical_Architecture section 4).
+ */
+export function restoreSnapshot(persisted: TimerSnapshot, config: TimerConfig, now: number = Date.now()): TimerSnapshot {
+  const neverPersisted = persisted.durationMs === 0 && persisted.remainingMs === 0 && persisted.deadline === null;
+  if (neverPersisted) {
+    return createIdleSnapshot("focus", config.durations.focus);
+  }
+  if (persisted.status !== "running") return persisted;
+  return timerReducer(persisted, { type: "TICK", now }, config);
+}
+
 function getNextMode(currentMode: TimerMode, focusSessionsSinceLongBreak: number, longBreakInterval: number): TimerMode {
   if (currentMode !== "focus") return "focus";
   const willReachLongBreak = focusSessionsSinceLongBreak + 1 >= longBreakInterval;
@@ -39,7 +89,7 @@ function getNextMode(currentMode: TimerMode, focusSessionsSinceLongBreak: number
 /**
  * Pure state-machine transition (states: idle/running/paused/completed;
  * modes: focus/short_break/long_break; events: START/PAUSE/RESUME/RESET/
- * SKIP/TICK/COMPLETE/CHANGE_MODE/RESTORE — see 02_Technical_Architecture §4).
+ * SKIP/TICK/COMPLETE/CHANGE_MODE/RESTORE -- see 02_Technical_Architecture section 4).
  *
  * This function has no side effects: callers (stores/hooks) own persistence,
  * worker messages, and cross-tab broadcast. `context.durations` lets callers

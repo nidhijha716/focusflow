@@ -1,11 +1,11 @@
 /**
  * Safe text helpers for user-entered content (task titles/descriptions, etc.).
  *
- * Scope: 04_Security_and_Access.pdf 5, 10  "Avoid dangerouslySetInnerHTML
+ * Scope: 04_Security_and_Access.pdf ยง5, ยง10 ยง "Avoid dangerouslySetInnerHTML
  * for task/user-entered text" and "Test XSS payloads in task title/description
  * fields."
  *
- * IMPORTANT: The primary XSS defense is architectural, not this file 
+ * IMPORTANT: The primary XSS defense is architectural, not this file ยง
  * render all user-entered text as plain React children/text nodes
  * (`<p>{task.title}</p>`) so React's built-in output escaping applies.
  * NEVER pass user-entered text through `dangerouslySetInnerHTML`.
@@ -54,7 +54,7 @@ export function stripControlCharacters(input: string): string {
 /**
  * Normalizes and bounds user-entered plain text before it is persisted or
  * rendered. Does NOT convert to HTML and does NOT need to be paired with
- * `dangerouslySetInnerHTML`  React already escapes the returned string when
+ * `dangerouslySetInnerHTML` ยง React already escapes the returned string when
  * rendered as text children.
  */
 export function sanitizePlainText(input: string, maxLength: number): string {

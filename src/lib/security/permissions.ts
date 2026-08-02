@@ -1,7 +1,7 @@
 /**
  * Gated permission/capability requests for Notifications and Picture-in-Picture.
  *
- * Scope: 04_Security_and_Access.pdf §7 — "Request notification or
+ * Scope: 04_Security_and_Access.pdf Â§7 â€” "Request notification or
  * Picture-in-Picture capabilities only in response to clear user actions and
  * explain why permission is needed. The timer must remain usable when
  * permissions are denied."
@@ -9,7 +9,7 @@
  * Every request function here requires the caller to pass
  * `triggeredByUserGesture: true`, which must only be `true` when the call is
  * made synchronously inside a click/keydown handler (or similarly, within the
- * same task as a genuine user action) — never on page load, on a timer tick,
+ * same task as a genuine user action) â€” never on page load, on a timer tick,
  * or speculatively. This is an explicit contract, not just documentation:
  * requests are refused outright when the flag is false or omitted.
  *
@@ -37,7 +37,7 @@ export function getNotificationPermissionStatus(): NotificationPermission | "uns
 /**
  * Requests Notification permission. Must be called synchronously from a user
  * gesture handler (e.g. an "Enable notifications" button's `onClick`), with
- * the reason for the request shown to the user beforehand in the UI (§7).
+ * the reason for the request shown to the user beforehand in the UI (Â§7).
  */
 export async function requestNotificationPermission(
   triggeredByUserGesture: boolean
@@ -76,8 +76,8 @@ export function isPictureInPictureSupported(): boolean {
 /**
  * Requests Picture-in-Picture for a given `<video>` element. Must be called
  * synchronously from a user gesture handler, with the reason for the request
- * explained in the UI beforehand (§7). The timer's own state/logic must not
- * depend on this succeeding — treat PiP purely as an optional presentation
+ * explained in the UI beforehand (Â§7). The timer's own state/logic must not
+ * depend on this succeeding â€” treat PiP purely as an optional presentation
  * enhancement.
  */
 export async function requestPictureInPicture(

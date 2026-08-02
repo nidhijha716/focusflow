@@ -3,13 +3,13 @@ import type { Task } from "@/types/task";
 
 /**
  * Derive-on-read parent focus-time rollup.
- * Source: 03_Local_Data_Schema.pdf, Data Integrity Rules — "Parent totals
+ * Source: 03_Local_Data_Schema.pdf, Data Integrity Rules â€” "Parent totals
  * should be derived from descendants or carefully maintained to avoid
  * double-counting."
  *
  * Per Agent 3's implementation decision: a task's own `directFocusSeconds`
  * is a maintained field (incremented directly when one of ITS OWN focus
- * sessions completes — see completeFocusSession.ts). A parent task's
+ * sessions completes â€” see completeFocusSession.ts). A parent task's
  * aggregate total is never cached; it is always computed by walking the
  * subtree at read time. This removes an entire class of drift bugs where a
  * cached parent counter and its children's real values disagree.

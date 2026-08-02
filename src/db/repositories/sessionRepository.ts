@@ -7,7 +7,7 @@ import { SessionSchema, type Session } from "@/types/session";
  *
  * Write paths that must be idempotent (completion/cancellation) intentionally
  * live in src/db/integrity/completeFocusSession.ts and are re-exported here
- * as the single public entry point — do not add a second `completeSession`
+ * as the single public entry point â€” do not add a second `completeSession`
  * implementation in this file.
  */
 export { completeFocusSession, cancelSession } from "../integrity/completeFocusSession";

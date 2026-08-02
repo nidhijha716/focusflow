@@ -8,7 +8,7 @@ import type { TimerSnapshot, TimerStatus } from "@/types/timer.types";
 /**
  * Thin facade over the canonical persistence layer (`@/db/localStorage` +
  * zod validation via `@/lib/security/storageGuard`, both Agent 3/4 owned;
- * see 03_Local_Data_Schema.pdf 2). The timer FSM (`services/timer.service.ts`)
+ * see 03_Local_Data_Schema.pdf ยง2). The timer FSM (`services/timer.service.ts`)
  * and settings store keep calling this module by name so callers don't need
  * to know about the persisted schema shape -- this file only translates
  * between the FSM's `TimerSnapshot` and the persisted `TimerState` record.
@@ -31,10 +31,11 @@ function toTimerState(snapshot: TimerSnapshot, selectedTaskId: TimerState["selec
     durationMs: snapshot.durationMs,
     remainingMs: snapshot.remainingMs,
     deadline: snapshot.deadline,
-    // Best-available mapping: both fields count completed focus sessions
-    // toward the next long break. Flagged for confirmation against Agent 5
-    // (Frontend Specification) if `cycleCount` is meant to be a lifetime
-    // total rather than "since last long break".
+    // Confirmed mapping (Phase 2 kickoff): both fields count completed focus
+    // sessions since the last long break, purely to drive long-break
+    // scheduling -- not a lifetime total. Do not repurpose `cycleCount` as a
+    // lifetime counter without also updating `TimerSnapshot.focusSessionsSinceLongBreak`
+    // and the reducer's SKIP/COMPLETE case (services/timer.service.ts).
     cycleCount: snapshot.focusSessionsSinceLongBreak,
     selectedTaskId,
     updatedAt: Date.now(),

@@ -15,7 +15,7 @@ import { emptyDailyStats } from "@/types/dailyStats";
  *
  * Idempotency strategy: if a session with this `id` already exists in the
  * `sessions` store, this is treated as a retried/duplicate completion call
- * and the existing record is returned unchanged — none of the side effects
+ * and the existing record is returned unchanged â€” none of the side effects
  * (dailyStats increments, task directFocusSeconds increments) are re-applied.
  */
 export async function completeFocusSession(

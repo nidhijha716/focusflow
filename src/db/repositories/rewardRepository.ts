@@ -3,7 +3,7 @@ import { RewardSchema, type Reward } from "@/types/reward";
 
 /**
  * STUB repository for the `rewards` IndexedDB store.
- * See src/types/reward.ts for why this is minimal — the PDF only specifies
+ * See src/types/reward.ts for why this is minimal â€” the PDF only specifies
  * the store's key/indexes, not a full record shape. Extend this file (not a
  * new one) once the real shape is confirmed.
  */

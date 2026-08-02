@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * Task record — IndexedDB store `tasks` (focusflow DB).
+ * Task record â€” IndexedDB store `tasks` (focusflow DB).
  * Source: 03_Local_Data_Schema.pdf, section 4.
  *
  * The zod schema is the single source of truth; the `Task` type is derived

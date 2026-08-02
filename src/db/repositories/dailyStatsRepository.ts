@@ -8,7 +8,7 @@ import { DailyStatsSchema, emptyDailyStats, type DailyStats } from "@/types/dail
  * Writes only ever happen as a side effect of a completed session (Data
  * Integrity Rules: "Only completed focus sessions increase ... daily focus
  * statistics") and are owned by
- * src/db/integrity/completeFocusSession.ts — this repository intentionally
+ * src/db/integrity/completeFocusSession.ts â€” this repository intentionally
  * exposes no `put`/`upsert` to prevent a second write path from drifting out
  * of sync with that integrity logic.
  */

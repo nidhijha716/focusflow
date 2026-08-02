@@ -90,7 +90,7 @@ export async function recordStreakActivity(db: FocusFlowDB, activeLocalDate: str
   return updated;
 }
 
-/** Restores the streak freeze (e.g. as a reward unlock) — does not affect the current streak count. */
+/** Restores the streak freeze (e.g. as a reward unlock) â€” does not affect the current streak count. */
 export async function grantStreakFreeze(db: FocusFlowDB): Promise<Streak> {
   const current = await getStreak(db);
   const updated: Streak = { ...current, freezeAvailable: true, updatedAt: Date.now() };

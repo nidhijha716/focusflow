@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * localStorage-backed shapes — 03_Local_Data_Schema.pdf, section 2.
+ * localStorage-backed shapes â€” 03_Local_Data_Schema.pdf, section 2.
  *
  * The PDF describes these keys by prose ("Durations, auto-start, alarm/music
  * volumes, notification and appearance preferences") rather than an
@@ -9,7 +9,7 @@ import { z } from "zod";
  * names below are a best-effort, TypeScript-safe interpretation of that
  * prose and are intentionally easy to extend. Flagged in Agent 3's report
  * for confirmation against Agent 5 (Frontend Specification) and Agent 8
- * (UI Theme) — update in place here if their docs specify exact fields;
+ * (UI Theme) â€” update in place here if their docs specify exact fields;
  * do not create a second/competing settings or UI-state type.
  */
 

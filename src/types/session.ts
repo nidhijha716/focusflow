@@ -2,7 +2,7 @@ import { z } from "zod";
 import { LocalDateSchema } from "./localDate";
 
 /**
- * Session record — IndexedDB store `sessions` (focusflow DB).
+ * Session record â€” IndexedDB store `sessions` (focusflow DB).
  * Source: 03_Local_Data_Schema.pdf, section 5.
  */
 export const SessionTypeSchema = z.enum(["focus", "short_break", "long_break"]);

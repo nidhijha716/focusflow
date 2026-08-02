@@ -2,14 +2,14 @@ import { TIMER_TICK_INTERVAL_MS } from "@/constants/timer.constants";
 import type { TimerWorkerInboundMessage, TimerWorkerOutboundMessage } from "@/types/timer.types";
 
 /**
- * Deadline-based timer worker (02_Technical_Architecture §2/§4): ticks are
+ * Deadline-based timer worker (02_Technical_Architecture Â§2/Â§4): ticks are
  * derived from `Date.now()` against an authoritative deadline, never by
  * accumulating per-second intervals, so drift and background-tab throttling
  * cannot desync the displayed time from the real deadline. Persisting the
  * deadline (not a per-second countdown) is what makes this safe.
  *
- * `self` is cast to the `Worker` interface — the message-passing shape is
- * symmetric on both ends of the channel — instead of adding the `webworker`
+ * `self` is cast to the `Worker` interface â€” the message-passing shape is
+ * symmetric on both ends of the channel â€” instead of adding the `webworker`
  * TS lib, which redeclares globals already provided by `dom` (tsconfig lib)
  * and would conflict.
  */

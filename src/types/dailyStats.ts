@@ -2,7 +2,7 @@ import { z } from "zod";
 import { LocalDateSchema } from "./localDate";
 
 /**
- * Daily statistics record — IndexedDB store `dailyStats` (focusflow DB).
+ * Daily statistics record â€” IndexedDB store `dailyStats` (focusflow DB).
  * Source: 03_Local_Data_Schema.pdf, section 6.
  */
 export const DailyStatsSchema = z.object({

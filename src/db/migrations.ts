@@ -4,11 +4,11 @@ import type { IDBPDatabase } from "idb";
 
 /**
  * Migration steps for the `focusflow` IndexedDB database.
- * Source: 03_Local_Data_Schema.pdf, Data Integrity Rules — "Provide explicit
+ * Source: 03_Local_Data_Schema.pdf, Data Integrity Rules â€” "Provide explicit
  * IndexedDB migration functions for future versions."
  *
  * Ownership note: Agent 3 (this file) owns the *content* of each version's
- * migration step. Agent 2 owns the migration *runner* — the code that opens
+ * migration step. Agent 2 owns the migration *runner* â€” the code that opens
  * the database and decides which steps to invoke for a given
  * `oldVersion -> newVersion` transition (their `src/db/client.ts`). Agent 2's
  * runner should call `runMigrations` (or iterate `MIGRATIONS` directly)

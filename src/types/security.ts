@@ -3,7 +3,7 @@
  *
  * Scope (per 04_Security_and_Access.pdf): local-first, no-auth app. These types
  * back client-side validation, image handling, permission gating, and storage
- * quota utilities — they do not model server/API security concerns.
+ * quota utilities โ€” they do not model server/API security concerns.
  */
 
 /** Discriminated result for any validation routine that can fail with a reason. */
@@ -11,7 +11,7 @@ export type ValidationResult<T> =
   | { readonly ok: true; readonly value: T }
   | { readonly ok: false; readonly error: string; readonly issues?: readonly string[] };
 
-/** MIME types accepted for custom backgrounds. SVG and HTML are intentionally excluded (ง6). */
+/** MIME types accepted for custom backgrounds. SVG and HTML are intentionally excluded (ยง6). */
 export type SupportedImageMimeType =
   | "image/jpeg"
   | "image/png"
@@ -26,7 +26,7 @@ export interface ImageValidationMeta {
   readonly sizeBytes: number;
 }
 
-/** Output of the client-side re-encode/compress step (ง6). */
+/** Output of the client-side re-encode/compress step (ยง6). */
 export interface ProcessedImage {
   readonly blob: Blob;
   readonly mimeType: SupportedImageMimeType;

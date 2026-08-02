@@ -5,15 +5,17 @@ export interface AudioPlayOptions {
 
 /**
  * Thin abstraction over HTMLAudioElement so callers never touch browser
- * audio APIs directly (02_Technical_Architecture §2: alarm/ambient audio).
+ * audio APIs directly (02_Technical_Architecture Â§2: alarm/ambient audio).
  * Asset lists, licensing, and mixing behavior are feature-level concerns
- * implemented in a later phase — this scaffold only defines the contract.
+ * implemented in a later phase â€” this scaffold only defines the contract.
  */
 export interface AudioService {
   preload: (id: string, src: string) => void;
   play: (id: string, options?: AudioPlayOptions) => void;
   stop: (id: string) => void;
   stopAll: () => void;
+  /** Updates volume on an already-preloaded/playing element without restarting it. */
+  setVolume: (id: string, volume: number) => void;
 }
 
 class HtmlAudioService implements AudioService {
@@ -31,7 +33,10 @@ class HtmlAudioService implements AudioService {
     if (!element) return;
     element.loop = options?.loop ?? false;
     element.volume = options?.volume ?? 1;
-    void element.play();
+    // A rejected `play()` promise (decode error, autoplay policy, etc.)
+    // must fail silently -- it should never surface as an unhandled
+    // rejection or break the calling feature's own state.
+    element.play().catch(() => {});
   }
 
   stop(id: string): void {
@@ -43,6 +48,12 @@ class HtmlAudioService implements AudioService {
 
   stopAll(): void {
     for (const id of this.elements.keys()) this.stop(id);
+  }
+
+  setVolume(id: string, volume: number): void {
+    const element = this.elements.get(id);
+    if (!element) return;
+    element.volume = Math.min(1, Math.max(0, volume));
   }
 }
 

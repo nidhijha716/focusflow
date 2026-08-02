@@ -1,12 +1,12 @@
 /**
  * Custom background image validation.
  *
- * Scope: 04_Security_and_Access.pdf §6 — "Accept only supported image MIME
+ * Scope: 04_Security_and_Access.pdf Â§6 â€” "Accept only supported image MIME
  * types and verify decoded image content", "Set a maximum input size",
  * "Do not execute SVG/HTML as user backgrounds in the initial release."
  *
  * This is client-side, defense-in-depth validation for a local-first app
- * that never uploads these files to a server (§6: "Do not upload anonymous
+ * that never uploads these files to a server (Â§6: "Do not upload anonymous
  * custom images to a server"). It is not a substitute for server-side
  * validation in any future phase that introduces uploads.
  *
@@ -125,7 +125,7 @@ async function decodeImageDimensions(
 
 /**
  * Validates a candidate custom-background image file. Never trust
- * `file.type`/`file.name` alone — this performs MIME allowlisting, byte
+ * `file.type`/`file.name` alone â€” this performs MIME allowlisting, byte
  * sniffing, size limits, and a real decode before returning success.
  */
 export async function validateImageFile(

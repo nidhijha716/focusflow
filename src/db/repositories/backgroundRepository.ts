@@ -13,7 +13,7 @@ import {
  * Only structural validation (mimeType allow-list, positive dimensions/size,
  * `Blob` instance check) happens here. Content-level security checks
  * (e.g. sniffing real file bytes, enforcing a max upload size/quota) belong
- * to Agent 4 (Security and Access) wrapping `NewBackgroundInputSchema`  do
+ * to Agent 4 (Security and Access) wrapping `NewBackgroundInputSchema` ยง do
  * not duplicate that policy here.
  */
 function parseBackgroundOrThrow(record: unknown, id: string): BackgroundRecord {

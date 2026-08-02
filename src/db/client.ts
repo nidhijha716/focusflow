@@ -5,10 +5,10 @@ import { runMigrations } from "@/db/migrations";
 let dbPromise: Promise<FocusFlowDB> | null = null;
 
 /**
- * Opens the shared IndexedDB connection (02_Technical_Architecture ง2/ง5).
+ * Opens the shared IndexedDB connection (02_Technical_Architecture ยง2/ยง5).
  * This is the migration *runner* only: `DB_NAME`, `DB_VERSION`, and the
  * `FocusFlowDBSchema` are owned by db/schema.ts, and the content of each
- * version's upgrade step is owned by db/migrations.ts (`runMigrations`) —
+ * version's upgrade step is owned by db/migrations.ts (`runMigrations`) โ€”
  * both belong to the entity/schema layer, not to this architecture-layer
  * client.
  */

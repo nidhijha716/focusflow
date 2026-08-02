@@ -26,7 +26,7 @@ function toSnapshot(state: SettingsState): SettingsState {
 
 /**
  * Runtime state seeded from the persisted `pomodoro:settings:v1` record
- * (03_Local_Data_Schema.pdf 2). Writes are delegated to
+ * (03_Local_Data_Schema.pdf ยง2). Writes are delegated to
  * services/storage.service, a thin facade over the canonical
  * `@/db/localStorage` + zod validation layer, rather than touching
  * localStorage inline.

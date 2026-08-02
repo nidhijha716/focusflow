@@ -9,7 +9,7 @@ export interface LeaderElectionHandle {
 
 /**
  * Cross-tab leader election via the Web Locks API (candidate mechanism from
- * 02_Technical_Architecture §6: "leader/ownership mechanism ... so two tabs
+ * 02_Technical_Architecture Â§6: "leader/ownership mechanism ... so two tabs
  * cannot independently complete the same session"). Only one tab across the
  * origin can hold `LEADER_LOCK_NAME` at a time; callers gate idempotent side
  * effects (e.g. completion writes, alarm playback) behind `onElected`.
@@ -38,7 +38,7 @@ export function electLeader(): LeaderElectionHandle | null {
     })
     .catch(() => {
       // Aborted before being granted, or Web Locks unsupported in this
-      // browser — leadership simply never resolves for this handle.
+      // browser â€” leadership simply never resolves for this handle.
     });
 
   return {

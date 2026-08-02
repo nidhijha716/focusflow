@@ -1,12 +1,12 @@
 /**
  * Safe `localStorage` read/write wrapper.
  *
- * Scope: 04_Security_and_Access.pdf 8, 10  "Never assume persisted JSON
+ * Scope: 04_Security_and_Access.pdf ยง8, ยง10 ยง "Never assume persisted JSON
  * is trustworthy; parse and validate it" and "Test malformed localStorage
  * ... records."
  *
  * This module intentionally does NOT define entity schemas (Timer state,
- * Settings, etc.)  those belong to the local data layer (03_Local_Data_Schema,
+ * Settings, etc.) ยง those belong to the local data layer (03_Local_Data_Schema,
  * owned separately). Callers pass in a Zod schema (`z.ZodType<T>`), so this
  * file stays a thin, reusable guard that any entity schema can plug into
  * once it exists, e.g.:

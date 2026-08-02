@@ -1,5 +1,5 @@
 /**
- * localStorage key names — 03_Local_Data_Schema.pdf, section 2.
+ * localStorage key names â€” 03_Local_Data_Schema.pdf, section 2.
  * Kept as literal constants (not string templates) so a typo can never
  * silently create a new, disconnected key.
  */

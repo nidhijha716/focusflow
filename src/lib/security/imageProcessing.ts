@@ -1,16 +1,16 @@
 /**
  * Client-side custom background re-encoding/compression.
  *
- * Scope: 04_Security_and_Access.pdf §6 — "Re-encode/compress images
+ * Scope: 04_Security_and_Access.pdf Â§6 â€” "Re-encode/compress images
  * client-side where practical" and "Do not execute SVG/HTML as user
  * backgrounds in the initial release."
  *
  * Call `validateImageFile` (validateImage.ts) BEFORE this module. This module
  * assumes the input already passed MIME allowlisting, byte sniffing, size,
- * and decode checks — it focuses on producing a normalized output blob.
+ * and decode checks â€” it focuses on producing a normalized output blob.
  *
  * Security note: decoding the source into a `<canvas>`/`OffscreenCanvas` and
- * re-serializing it as pixel data is itself a sanitization step — only raw
+ * re-serializing it as pixel data is itself a sanitization step â€” only raw
  * pixels survive the round trip, so any active content (scripts, embedded
  * objects, polyglot payloads) hidden inside a container that merely *looked*
  * like a supported raster image cannot execute or persist through
@@ -35,7 +35,7 @@ const CANVAS_ENCODABLE_MIME_TYPES: readonly SupportedImageMimeType[] = [
 export interface ReencodeOptions {
   /** Longest side, in pixels, the output image is scaled down to fit within. */
   readonly maxDimensionPx?: number;
-  /** JPEG/WebP quality, 0–1. Ignored for PNG (lossless). */
+  /** JPEG/WebP quality, 0â€“1. Ignored for PNG (lossless). */
   readonly quality?: number;
   /** Preferred output MIME type. Falls back to `image/webp` if not canvas-encodable. */
   readonly preferredOutputMimeType?: SupportedImageMimeType;

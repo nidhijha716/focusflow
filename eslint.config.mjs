@@ -12,6 +12,13 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated test-runner artifacts (bundled/minified JS, not source) --
+    // Playwright's HTML report embeds its own trace-viewer bundle under
+    // playwright-report/trace/assets/, which ESLint would otherwise lint as
+    // if it were project source.
+    "playwright-report/**",
+    "test-results/**",
+    "coverage/**",
   ]),
 ]);
 

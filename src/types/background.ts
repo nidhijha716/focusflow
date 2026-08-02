@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * Custom background record — IndexedDB store `backgrounds` (focusflow DB).
+ * Custom background record â€” IndexedDB store `backgrounds` (focusflow DB).
  * Source: 03_Local_Data_Schema.pdf, section 8.
  *
  * `blob` is validated with `instanceof` rather than a deep zod check since

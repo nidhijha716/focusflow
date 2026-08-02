@@ -2,7 +2,7 @@ import { z } from "zod";
 import { LocalDateSchema } from "./localDate";
 
 /**
- * Streak record — IndexedDB store `streak` (focusflow DB), single row keyed
+ * Streak record â€” IndexedDB store `streak` (focusflow DB), single row keyed
  * by the literal string `'singleton'`.
  * Source: 03_Local_Data_Schema.pdf, section 7.
  */

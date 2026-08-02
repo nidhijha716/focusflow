@@ -1,9 +1,9 @@
 /**
  * Security header construction for the Next.js App Router.
  *
- * Scope: 04_Security_and_Access.pdf §5 (Content Security). This app has no
+ * Scope: 04_Security_and_Access.pdf Â§5 (Content Security). This app has no
  * login, no server-rendered user content beyond locally-typed task/session
- * text, and no first-party API surface that isn't same-origin — so the
+ * text, and no first-party API surface that isn't same-origin â€” so the
  * policy below is written for a static, same-origin, local-first app.
  *
  * Approach: STATIC CSP via `next.config.ts` `headers()` (no nonce), per the
@@ -37,10 +37,10 @@ function buildCspDirectives(isDev: boolean): string {
     // `blob:`/`data:` are required for canvas re-encoded custom backgrounds and
     // IndexedDB-sourced object URLs rendered via <img>/CSS background-image.
     `img-src 'self' blob: data:`,
-    // next/font self-hosts Google fonts at build time — no external font origin needed.
+    // next/font self-hosts Google fonts at build time â€” no external font origin needed.
     `font-src 'self'`,
     // No first-party API and no third-party network calls in the initial scope (no auth,
-    // no analytics by default per §9). Tighten further (remove 'self') if a future phase
+    // no analytics by default per Â§9). Tighten further (remove 'self') if a future phase
     // introduces a dedicated API origin instead of same-origin route handlers.
     `connect-src 'self'`,
     `object-src 'none'`,
@@ -78,7 +78,7 @@ export function buildSecurityHeaders(isDev: boolean): ReadonlyArray<{ key: strin
       // No camera/mic/geolocation/etc. are used anywhere in the initial scope.
       // Notifications are controlled by the separate Notification permission API
       // (permissions.ts), not Permissions-Policy, and PiP is requested via the
-      // Document Picture-in-Picture / video PiP APIs — neither is blocked by this policy.
+      // Document Picture-in-Picture / video PiP APIs â€” neither is blocked by this policy.
       key: "Permissions-Policy",
       value: "camera=(), microphone=(), geolocation=(), browsing-topics=(), interest-cohort=()",
     },

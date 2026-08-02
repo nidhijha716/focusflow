@@ -1,7 +1,7 @@
 /**
  * @deprecated `SettingsSnapshot` used to be a second, competing shape for
  * user preferences alongside the canonical `pomodoro:settings:v1` schema
- * (`@/types/storage`, Agent 3, 03_Local_Data_Schema.pdf 2). Re-exported
+ * (`@/types/storage`, Agent 3, 03_Local_Data_Schema.pdf ยง2). Re-exported
  * here so existing `@/types/settings.types` imports keep working; import
  * `SettingsState` directly from `@/types/storage` in new code.
  */

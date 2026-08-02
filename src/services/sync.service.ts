@@ -3,10 +3,10 @@ import { createTypedBroadcastChannel, type TypedBroadcastChannel } from "@/lib/b
 import type { TimerEvent, TimerSnapshot } from "@/types/timer.types";
 
 /**
- * Cross-tab message contract (02_Technical_Architecture §6): commands and
+ * Cross-tab message contract (02_Technical_Architecture Â§6): commands and
  * authoritative snapshots travel over the same channel. Consumers apply
  * `snapshot` messages directly and treat `command` messages as intents to
- * replay through the local FSM — completion handling must stay idempotent
+ * replay through the local FSM â€” completion handling must stay idempotent
  * regardless of which tab is leader (see lib/leader-election.ts).
  */
 export type SyncMessage =

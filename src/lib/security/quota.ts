@@ -2,7 +2,7 @@
  * Storage quota handling: max saved custom backgrounds + generic
  * quota-exceeded / low-storage detection.
  *
- * Scope: 04_Security_and_Access.pdf §6, §8 — "Set a maximum ... number of
+ * Scope: 04_Security_and_Access.pdf Â§6, Â§8 â€” "Set a maximum ... number of
  * saved custom backgrounds", "Handle IndexedDB unavailable/quota errors
  * without crashing the timer", "Warn when custom images cannot be stored
  * because quota is exceeded."
@@ -15,7 +15,7 @@ export const DEFAULT_MAX_CUSTOM_BACKGROUNDS = 10;
 
 /**
  * Checks whether saving one more custom background would exceed the allowed
- * count. Pure/synchronous — callers pass in the current count from wherever
+ * count. Pure/synchronous â€” callers pass in the current count from wherever
  * Agent 3's repository layer tracks it (IndexedDB is not touched here).
  */
 export function checkBackgroundCountQuota(
@@ -49,7 +49,7 @@ export function isQuotaExceededError(error: unknown): boolean {
 
 /**
  * Best-effort snapshot of overall origin storage usage via the Storage
- * Manager API. Returns `supported: false` (never throws) when unavailable —
+ * Manager API. Returns `supported: false` (never throws) when unavailable â€”
  * e.g. older browsers, some privacy modes, or non-browser environments.
  */
 export async function getStorageEstimate(): Promise<StorageEstimateSnapshot> {
@@ -74,7 +74,7 @@ export async function getStorageEstimate(): Promise<StorageEstimateSnapshot> {
  * True if usage is at or above `thresholdRatio` (default 90%) of the
  * origin's storage quota. Used to proactively warn before writes start
  * failing with quota errors. Returns `false` if the estimate is unsupported
- * or unknown — callers should still handle `isQuotaExceededError` on the
+ * or unknown â€” callers should still handle `isQuotaExceededError` on the
  * actual write as the authoritative check.
  */
 export async function isStorageNearQuota(thresholdRatio = 0.9): Promise<boolean> {

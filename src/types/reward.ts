@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * STUB — Reward record — IndexedDB store `rewards` (focusflow DB).
+ * STUB â€” Reward record â€” IndexedDB store `rewards` (focusflow DB).
  *
  * 03_Local_Data_Schema.pdf only defines the store's key (`id`) and indexes
  * (`unlockedAt`, `type`) for this entity; no field-level record shape is

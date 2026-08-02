@@ -2,7 +2,7 @@ import type { TimerMode as PersistedTimerMode, TimerStatus as PersistedTimerStat
 
 /**
  * Re-exported from the canonical persisted schema (`@/types/storage`,
- * 03_Local_Data_Schema.pdf 2) so the FSM and the `pomodoro:timer:v1` record
+ * 03_Local_Data_Schema.pdf ยง2) so the FSM and the `pomodoro:timer:v1` record
  * never define two competing `TimerMode` unions that can silently drift.
  */
 export type TimerMode = PersistedTimerMode;
