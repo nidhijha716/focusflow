@@ -25,7 +25,9 @@ export interface StatsStoreState {
  * session so `StatsView`/`StreakIndicator`/`ChallengeCard` reflect the new
  * totals without polling.
  */
-export const useStatsStore = create<StatsStoreState>((set, get) => ({
+let refreshInFlight: Promise<void> | null = null;
+
+export const useStatsStore = create<StatsStoreState>((set) => ({
   dailyStats: emptyDailyStats(todayLocalDateString()),
   streak: defaultStreak(),
   isLoading: false,
@@ -33,15 +35,22 @@ export const useStatsStore = create<StatsStoreState>((set, get) => ({
   error: null,
 
   refreshAll: async () => {
-    if (get().isLoading) return;
-    set({ isLoading: true, error: null });
-    try {
-      const db = await getDb();
-      const today = todayLocalDateString();
-      const [dailyStats, streak] = await Promise.all([getDailyStats(db, today), getStreak(db)]);
-      set({ dailyStats, streak, isLoading: false, hasLoaded: true });
-    } catch (error) {
-      set({ isLoading: false, error: error instanceof Error ? error.message : "Failed to load stats" });
-    }
+    if (refreshInFlight) return refreshInFlight;
+
+    refreshInFlight = (async () => {
+      set({ isLoading: true, error: null });
+      try {
+        const db = await getDb();
+        const today = todayLocalDateString();
+        const [dailyStats, streak] = await Promise.all([getDailyStats(db, today), getStreak(db)]);
+        set({ dailyStats, streak, isLoading: false, hasLoaded: true });
+      } catch (error) {
+        set({ isLoading: false, error: error instanceof Error ? error.message : "Failed to load stats" });
+      } finally {
+        refreshInFlight = null;
+      }
+    })();
+
+    return refreshInFlight;
   },
 }));

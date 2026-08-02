@@ -2,6 +2,7 @@ import { getDb } from "@/db/client";
 import { completeFocusSession } from "@/db/integrity/completeFocusSession";
 import { recordStreakActivity } from "@/db/repositories/streakRepository";
 import { evaluateDailyChallenge } from "@/services/challenge.service";
+import { broadcastStatsUpdated } from "@/services/sync.service";
 import { useStatsStore } from "@/stores/stats.store";
 import { useTaskStore } from "@/stores/task.store";
 import { todayLocalDateString } from "@/types/localDate";
@@ -50,6 +51,7 @@ export async function recordCompletedSession(previous: TimerSnapshot, completedA
     }
 
     await useStatsStore.getState().refreshAll();
+    broadcastStatsUpdated();
   } catch (error) {
     console.error("[session] Failed to record completed session:", error);
   }

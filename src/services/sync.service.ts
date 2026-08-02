@@ -11,7 +11,8 @@ import type { TimerEvent, TimerSnapshot } from "@/types/timer.types";
  */
 export type SyncMessage =
   | { kind: "command"; event: TimerEvent; sentAt: number }
-  | { kind: "snapshot"; snapshot: TimerSnapshot; sentAt: number };
+  | { kind: "snapshot"; snapshot: TimerSnapshot; sentAt: number }
+  | { kind: "stats-updated"; sentAt: number };
 
 let channel: TypedBroadcastChannel<SyncMessage> | null | undefined;
 
@@ -28,6 +29,11 @@ export function broadcastCommand(event: TimerEvent): void {
 
 export function broadcastSnapshot(snapshot: TimerSnapshot): void {
   getChannel()?.postMessage({ kind: "snapshot", snapshot, sentAt: Date.now() });
+}
+
+/** Notifies other tabs to re-read daily stats/streak after a completed session. */
+export function broadcastStatsUpdated(): void {
+  getChannel()?.postMessage({ kind: "stats-updated", sentAt: Date.now() });
 }
 
 export function subscribeToSync(listener: (message: SyncMessage) => void): () => void {

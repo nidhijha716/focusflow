@@ -11,6 +11,7 @@ import { broadcastSnapshot, subscribeToSync } from "@/services/sync.service";
 import { loadTimerSnapshot, saveTimerSnapshot } from "@/services/storage.service";
 import { restoreSnapshot, timerConfigFromSettings } from "@/services/timer.service";
 import { useSettingsStore } from "@/stores/settings.store";
+import { useStatsStore } from "@/stores/stats.store";
 import { useTimerStore } from "@/stores/timer.store";
 import { createTimerWorker, postToTimerWorker } from "@/workers/createTimerWorker";
 import type { TimerSnapshot } from "@/types/timer.types";
@@ -21,6 +22,14 @@ function syncWorkerToSnapshot(worker: Worker | null, snapshot: TimerSnapshot): v
   } else {
     postToTimerWorker(worker, { type: "STOP" });
   }
+}
+
+function sessionJustEnded(before: TimerSnapshot, after: TimerSnapshot): boolean {
+  return (
+    before.status === "running" &&
+    after.status === "idle" &&
+    after.mode !== before.mode
+  );
 }
 
 /**
@@ -122,7 +131,7 @@ export function useTimerEngine(): void {
       useTimerStore.getState().tick();
       const after = useTimerStore.getState().snapshot;
 
-      const justCompleted = before.status === "running" && after.status !== "running";
+      const justCompleted = sessionJustEnded(before, after);
       if (justCompleted && isLeaderRef.current) {
         const settings = useSettingsStore.getState();
         if (settings.alarmSource === "spotify" && settings.spotifyAlarmTrack?.uri) {
@@ -139,6 +148,10 @@ export function useTimerEngine(): void {
     worker?.addEventListener("message", handleWorkerMessage);
 
     const unsubscribeSync = subscribeToSync((message) => {
+      if (message.kind === "stats-updated") {
+        void useStatsStore.getState().refreshAll();
+        return;
+      }
       if (message.kind !== "snapshot") return;
       isApplyingRemoteRef.current = true;
       useTimerStore.getState().restore(message.snapshot);
@@ -147,12 +160,23 @@ export function useTimerEngine(): void {
 
     const leader = electLeader();
     let leaderHandleReleased = false;
-    void leader?.onElected.then(() => {
-      if (!leaderHandleReleased) isLeaderRef.current = true;
-    });
+    if (!leader) {
+      // No Web Locks API — treat this tab as the sole leader (single-tab fallback).
+      isLeaderRef.current = true;
+    } else {
+      void leader.onElected.then(() => {
+        if (!leaderHandleReleased) isLeaderRef.current = true;
+      });
+    }
 
     const unsubscribeStore = useTimerStore.subscribe((state, prevState) => {
       if (state.snapshot === prevState.snapshot) return;
+
+      const ended = sessionJustEnded(prevState.snapshot, state.snapshot);
+      if (ended && !isLeaderRef.current) {
+        // Leader tab records + refreshes; followers re-read after the broadcast snapshot lands.
+        void useStatsStore.getState().refreshAll();
+      }
 
       const isTransition =
         state.snapshot.deadline !== prevState.snapshot.deadline ||
@@ -172,6 +196,7 @@ export function useTimerEngine(): void {
 
     return () => {
       leaderHandleReleased = true;
+      isLeaderRef.current = false;
       unsubscribeStore();
       unsubscribeSync();
       worker?.removeEventListener("message", handleWorkerMessage);
