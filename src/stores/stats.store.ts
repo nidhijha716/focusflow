@@ -26,8 +26,9 @@ export interface StatsStoreState {
  * totals without polling.
  */
 let refreshInFlight: Promise<void> | null = null;
+let refreshQueued = false;
 
-export const useStatsStore = create<StatsStoreState>((set) => ({
+export const useStatsStore = create<StatsStoreState>((set, get) => ({
   dailyStats: emptyDailyStats(todayLocalDateString()),
   streak: defaultStreak(),
   isLoading: false,
@@ -35,7 +36,10 @@ export const useStatsStore = create<StatsStoreState>((set) => ({
   error: null,
 
   refreshAll: async () => {
-    if (refreshInFlight) return refreshInFlight;
+    if (refreshInFlight) {
+      refreshQueued = true;
+      return refreshInFlight;
+    }
 
     refreshInFlight = (async () => {
       set({ isLoading: true, error: null });
@@ -48,6 +52,10 @@ export const useStatsStore = create<StatsStoreState>((set) => ({
         set({ isLoading: false, error: error instanceof Error ? error.message : "Failed to load stats" });
       } finally {
         refreshInFlight = null;
+        if (refreshQueued) {
+          refreshQueued = false;
+          void get().refreshAll();
+        }
       }
     })();
 

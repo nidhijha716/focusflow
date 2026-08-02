@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { ALARM_SOUND_ID, ALARM_SOUND_SRC } from "@/constants/timer.constants";
-import { electLeader } from "@/lib/leader-election";
+import { ALARM_SOUND_ID, ALARM_SOUND_SRC, TIMER_TICK_INTERVAL_MS } from "@/constants/timer.constants";
+import { runIfLeader } from "@/lib/leader-election";
 import { audioService } from "@/services/audio.service";
 import { playSpotifyTrack } from "@/services/spotifyPlayback.service";
 import { notifySessionComplete } from "@/services/notification.service";
@@ -80,7 +80,6 @@ function sessionJustEnded(before: TimerSnapshot, after: TimerSnapshot): boolean 
 export function useTimerEngine(): void {
   const durationsSettings = useSettingsStore((state) => state.durations);
   const isApplyingRemoteRef = useRef(false);
-  const isLeaderRef = useRef(false);
 
   useEffect(() => {
     // Defer fetching/buffering the alarm asset until a session is actually
@@ -124,7 +123,34 @@ export function useTimerEngine(): void {
     useTimerStore.getState().restore(restoreSnapshot(loadTimerSnapshot(), { durations, longBreakInterval }));
 
     const worker = createTimerWorker();
-    syncWorkerToSnapshot(worker, useTimerStore.getState().snapshot);
+    let fallbackIntervalId: ReturnType<typeof setInterval> | null = null;
+
+    function stopFallbackPolling(): void {
+      if (fallbackIntervalId !== null) {
+        clearInterval(fallbackIntervalId);
+        fallbackIntervalId = null;
+      }
+    }
+
+    function startFallbackPolling(): void {
+      if (worker || fallbackIntervalId !== null) return;
+      fallbackIntervalId = setInterval(() => {
+        if (useTimerStore.getState().snapshot.status !== "running") return;
+        handleWorkerMessage();
+      }, TIMER_TICK_INTERVAL_MS);
+    }
+
+    function syncWorkerOrFallback(snapshot: TimerSnapshot): void {
+      if (snapshot.status === "running" && snapshot.deadline !== null) {
+        syncWorkerToSnapshot(worker, snapshot);
+        startFallbackPolling();
+      } else {
+        syncWorkerToSnapshot(worker, snapshot);
+        stopFallbackPolling();
+      }
+    }
+
+    syncWorkerOrFallback(useTimerStore.getState().snapshot);
 
     function handleWorkerMessage(): void {
       const before = useTimerStore.getState().snapshot;
@@ -132,7 +158,9 @@ export function useTimerEngine(): void {
       const after = useTimerStore.getState().snapshot;
 
       const justCompleted = sessionJustEnded(before, after);
-      if (justCompleted && isLeaderRef.current) {
+      if (!justCompleted) return;
+
+      void runIfLeader(async () => {
         const settings = useSettingsStore.getState();
         if (settings.alarmSource === "spotify" && settings.spotifyAlarmTrack?.uri) {
           void playSpotifyTrack(settings.spotifyAlarmTrack.uri, settings.alarmVolume).catch(() => {
@@ -141,11 +169,13 @@ export function useTimerEngine(): void {
         } else {
           audioService.play(ALARM_SOUND_ID, { volume: settings.alarmVolume });
         }
-        void recordCompletedSession(before, Date.now());
+        await recordCompletedSession(before, Date.now());
         notifySessionComplete(before, after, settings.notificationsEnabled);
-      }
+      });
     }
-    worker?.addEventListener("message", handleWorkerMessage);
+    worker?.addEventListener("message", () => {
+      handleWorkerMessage();
+    });
 
     const unsubscribeSync = subscribeToSync((message) => {
       if (message.kind === "stats-updated") {
@@ -158,23 +188,11 @@ export function useTimerEngine(): void {
       isApplyingRemoteRef.current = false;
     });
 
-    const leader = electLeader();
-    let leaderHandleReleased = false;
-    if (!leader) {
-      // No Web Locks API — treat this tab as the sole leader (single-tab fallback).
-      isLeaderRef.current = true;
-    } else {
-      void leader.onElected.then(() => {
-        if (!leaderHandleReleased) isLeaderRef.current = true;
-      });
-    }
-
     const unsubscribeStore = useTimerStore.subscribe((state, prevState) => {
       if (state.snapshot === prevState.snapshot) return;
 
       const ended = sessionJustEnded(prevState.snapshot, state.snapshot);
-      if (ended && !isLeaderRef.current) {
-        // Leader tab records + refreshes; followers re-read after the broadcast snapshot lands.
+      if (ended) {
         void useStatsStore.getState().refreshAll();
       }
 
@@ -187,7 +205,7 @@ export function useTimerEngine(): void {
       // Every tab's own worker must track the true deadline regardless of
       // whether this transition originated locally or from a remote
       // snapshot -- otherwise a follower tab's countdown would freeze.
-      syncWorkerToSnapshot(worker, state.snapshot);
+      syncWorkerOrFallback(state.snapshot);
 
       if (isApplyingRemoteRef.current) return;
       saveTimerSnapshot(state.snapshot);
@@ -195,13 +213,11 @@ export function useTimerEngine(): void {
     });
 
     return () => {
-      leaderHandleReleased = true;
-      isLeaderRef.current = false;
+      stopFallbackPolling();
       unsubscribeStore();
       unsubscribeSync();
       worker?.removeEventListener("message", handleWorkerMessage);
       worker?.terminate();
-      leader?.release();
     };
     // Mount once per tab: only refs (stable) and module-level imports are
     // captured, and settings are always read fresh via getState() inside

@@ -53,3 +53,26 @@ export async function isLeaderAvailable(): Promise<boolean> {
   const snapshot = await navigator.locks.query();
   return !(snapshot.held ?? []).some((lock) => lock.name === LEADER_LOCK_NAME);
 }
+
+/**
+ * Runs `fn` only if this tab can take the leader lock right now (`ifAvailable`).
+ * Use at session COMPLETE time so recording/alarm side effects never depend on a
+ * long-lived `onElected` promise that may not have resolved yet (e.g. React Strict
+ * Mode remounts). Returns whether `fn` ran.
+ *
+ * Ref: https://developer.mozilla.org/docs/Web/API/LockManager/request
+ */
+export async function runIfLeader(fn: () => void | Promise<void>): Promise<boolean> {
+  if (typeof navigator === "undefined" || !("locks" in navigator)) {
+    await fn();
+    return true;
+  }
+
+  let ran = false;
+  await navigator.locks.request(LEADER_LOCK_NAME, { ifAvailable: true }, async (lock) => {
+    if (!lock) return;
+    await fn();
+    ran = true;
+  });
+  return ran;
+}
