@@ -27,7 +27,7 @@ export interface HeaderProps {
 export function Header({ streakSlot, onOpenTasks, onOpenSettings }: HeaderProps) {
   return (
     <>
-      <span className="text-xl font-bold tracking-tight sm:text-2xl">Pomodoro</span>
+      <span className="text-xl font-bold tracking-tight sm:text-2xl">FocusFlow</span>
 
       <div className="flex items-center gap-2 sm:gap-3">
         {streakSlot}
